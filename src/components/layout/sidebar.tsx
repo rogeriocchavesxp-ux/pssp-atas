@@ -1,0 +1,109 @@
+'use client'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
+
+const NAV = [
+  {
+    label: 'Principal',
+    items: [
+      { href: '/dashboard', icon: '⊞', label: 'Dashboard' },
+      { href: '/reunioes', icon: '🏛️', label: 'Reuniões' },
+    ],
+  },
+  {
+    label: 'Mesa da Reunião',
+    items: [
+      { href: '/ementa', icon: '📋', label: 'Ementário' },
+      { href: '/propostas', icon: '📄', label: 'Propostas' },
+      { href: '/resolucoes', icon: '✅', label: 'Resoluções' },
+      { href: '/atas', icon: '📝', label: 'Atas' },
+    ],
+  },
+  {
+    label: 'Relatórios',
+    items: [
+      { href: '/relatorios', icon: '📊', label: 'Relatórios Anuais' },
+    ],
+  },
+  {
+    label: 'Cadastros',
+    items: [
+      { href: '/oficiais', icon: '👤', label: 'Oficiais' },
+      { href: '/igrejas', icon: '⛪', label: 'Igrejas' },
+      { href: '/comissoes', icon: '👥', label: 'Comissões' },
+    ],
+  },
+]
+
+export function Sidebar() {
+  const pathname = usePathname()
+  const router = useRouter()
+  const supabase = createClient()
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
+
+  return (
+    <aside
+      className="fixed top-0 left-0 h-screen flex flex-col z-30"
+      style={{ width: 'var(--sidebar-w)', background: 'var(--navy-700)', borderRight: '1px solid rgba(255,255,255,0.08)' }}
+    >
+      {/* Logo */}
+      <div className="px-5 py-5 border-b border-white/10">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-white text-sm font-bold">
+            P
+          </div>
+          <div>
+            <div className="text-white text-sm font-semibold leading-tight">PSSP</div>
+            <div className="text-white/40 text-xs">Presbitério Leste SP</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 overflow-y-auto py-4 px-3">
+        {NAV.map((group) => (
+          <div key={group.label} className="mb-5">
+            <div className="px-2 mb-1.5 text-xs font-semibold uppercase tracking-widest text-white/30">
+              {group.label}
+            </div>
+            {group.items.map((item) => {
+              const active = pathname === item.href || pathname.startsWith(item.href + '/')
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center gap-2.5 px-3 py-2 rounded-lg mb-0.5 text-sm transition-all ${
+                    active
+                      ? 'bg-white/15 text-white font-medium'
+                      : 'text-white/60 hover:bg-white/8 hover:text-white'
+                  }`}
+                >
+                  <span className="text-base">{item.icon}</span>
+                  <span>{item.label}</span>
+                </Link>
+              )
+            })}
+          </div>
+        ))}
+      </nav>
+
+      {/* Footer */}
+      <div className="px-3 py-4 border-t border-white/10">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-white/50 hover:text-white hover:bg-white/8 transition-all"
+        >
+          <span>→</span>
+          <span>Sair</span>
+        </button>
+      </div>
+    </aside>
+  )
+}
