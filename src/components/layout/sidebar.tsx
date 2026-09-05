@@ -35,6 +35,12 @@ const NAV = [
       { href: '/comissoes', icon: '👥', label: 'Comissões' },
     ],
   },
+  {
+    label: 'Administração',
+    items: [
+      { href: '/usuarios', icon: '🔐', label: 'Usuários e Permissões' },
+    ],
+  },
 ]
 
 export function Sidebar() {

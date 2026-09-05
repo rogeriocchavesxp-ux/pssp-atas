@@ -1,4 +1,4 @@
-export type Papel = 'secretario' | 'moderador' | 'presbitero' | 'pastor' | 'admin'
+export type Papel = 'admin' | 'moderador' | 'secretario' | 'secretario_executivo' | 'presbitero' | 'pastor'
 
 export type TipoReuniao = 'ordinaria' | 'extraordinaria' | 'solene' | 'administrativa'
 
