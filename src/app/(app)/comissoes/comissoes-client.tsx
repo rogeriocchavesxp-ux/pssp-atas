@@ -10,7 +10,7 @@ type Membro = { id: string; funcao: string; oficial: { id: string; nome: string;
 type ComissaoLocal = Omit<Comissao, 'membros'> & { membros?: Membro[] }
 
 const FUNCAO_MAP: Record<string, string> = {
-  presidente: 'Presidente', secretario: 'Secretário', membro: 'Membro',
+  relator: 'Relator', membro: 'Membro',
 }
 
 export function ComissoesClient({
@@ -30,7 +30,7 @@ export function ComissoesClient({
 
   // Gerenciamento de membros
   const [gerenciando, setGerenciando] = useState<ComissaoLocal | null>(null)
-  const [addMembro, setAddMembro] = useState({ oficial_id: '', funcao: 'membro' })
+  const [addMembro, setAddMembro] = useState({ oficial_id: '', funcao: 'relator' })
   const [savingMembro, setSavingMembro] = useState(false)
   const [erroMembro, setErroMembro] = useState('')
 
@@ -261,9 +261,8 @@ export function ComissoesClient({
                       <select className={`${cls} bg-white`}
                         value={addMembro.funcao}
                         onChange={e => setAddMembro(p => ({ ...p, funcao: e.target.value }))}>
+                        <option value="relator">Relator</option>
                         <option value="membro">Membro</option>
-                        <option value="secretario">Secretário</option>
-                        <option value="presidente">Presidente</option>
                       </select>
                     </div>
                   </div>
