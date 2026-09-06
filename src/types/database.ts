@@ -591,11 +591,9 @@ export interface Ata {
 }
 
 export interface AtaConteudo {
-  abertura: string
-  verificacao_quorum: string
-  pauta: string
-  deliberacoes: string
-  encerramento: string
+  verificacao_poderes: string
+  sessao_preparatoria: string
+  sessao_regular: string
   observacoes?: string
 }
 
