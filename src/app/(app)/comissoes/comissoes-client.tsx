@@ -10,6 +10,7 @@ export function ComissoesClient({ comissoes: inicial }: { comissoes: Comissao[] 
   const [comissoes, setComissoes] = useState(inicial)
   const [modal, setModal] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [erro, setErro] = useState('')
   const [form, setForm] = useState({ numero: '', nome: '', tipo: 'permanente' })
 
   function set(f: string, v: string) { setForm(p => ({ ...p, [f]: v })) }
@@ -17,6 +18,7 @@ export function ComissoesClient({ comissoes: inicial }: { comissoes: Comissao[] 
   async function salvar(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
+    setErro('')
     const { data, error } = await supabase.from('comissoes').insert({
       numero: parseInt(form.numero),
       nome: form.nome.trim() || null,
@@ -24,7 +26,8 @@ export function ComissoesClient({ comissoes: inicial }: { comissoes: Comissao[] 
       ativa: true,
     }).select('*, membros:comissao_membros(id, funcao, oficial:oficiais(nome, tipo))').single()
     setSaving(false)
-    if (!error && data) {
+    if (error) { setErro(error.message); return }
+    if (data) {
       setComissoes(prev => [...prev, data as Comissao].sort((a, b) => a.numero - b.numero))
       setModal(false)
       setForm({ numero: '', nome: '', tipo: 'permanente' })
@@ -93,6 +96,7 @@ export function ComissoesClient({ comissoes: inicial }: { comissoes: Comissao[] 
               <button onClick={() => setModal(false)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
             </div>
             <form onSubmit={salvar} className="p-6 space-y-4">
+              {erro && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2">{erro}</p>}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Número *</label>

@@ -14,6 +14,7 @@ export function IgrejasClient({ igrejas: inicial }: { igrejas: Igreja[] }) {
   const [igrejas, setIgrejas] = useState(inicial)
   const [modal, setModal] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [erro, setErro] = useState('')
   const [form, setForm] = useState({ nome: '', sigla: '', cidade: '', bairro: '', tipo: 'sede' })
 
   function set(f: string, v: string) { setForm(p => ({ ...p, [f]: v })) }
@@ -21,6 +22,7 @@ export function IgrejasClient({ igrejas: inicial }: { igrejas: Igreja[] }) {
   async function salvar(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
+    setErro('')
     const { data, error } = await supabase.from('igrejas').insert({
       nome: form.nome.trim(),
       sigla: form.sigla.trim() || null,
@@ -30,7 +32,8 @@ export function IgrejasClient({ igrejas: inicial }: { igrejas: Igreja[] }) {
       ativa: true,
     }).select('*').single()
     setSaving(false)
-    if (!error && data) {
+    if (error) { setErro(error.message); return }
+    if (data) {
       setIgrejas(prev => [...prev, data as Igreja].sort((a, b) => a.nome.localeCompare(b.nome)))
       setModal(false)
       setForm({ nome: '', sigla: '', cidade: '', bairro: '', tipo: 'sede' })
@@ -86,6 +89,7 @@ export function IgrejasClient({ igrejas: inicial }: { igrejas: Igreja[] }) {
               <button onClick={() => setModal(false)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
             </div>
             <form onSubmit={salvar} className="p-6 space-y-4">
+              {erro && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2">{erro}</p>}
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Nome *</label>
                 <input required className={cls} value={form.nome} onChange={e => set('nome', e.target.value)} placeholder="Igreja Presbiteriana em..." />
