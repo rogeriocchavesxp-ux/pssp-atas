@@ -447,6 +447,20 @@ export interface RelatorioAnual {
   igreja?: Igreja
 }
 
+export interface Seminarista {
+  id: string
+  nome: string
+  email: string | null
+  telefone: string | null
+  seminario: string | null
+  curso_ano: number | null
+  status: 'cursando' | 'licenciado' | 'aprovado' | 'desistiu'
+  igreja_id: string | null
+  ativo: boolean
+  created_at: string
+  igreja?: Igreja
+}
+
 export interface Perfil {
   id: string
   nome: string
