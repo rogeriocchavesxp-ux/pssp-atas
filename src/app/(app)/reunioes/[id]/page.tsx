@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import type { Reuniao, Documento } from '@/types/database'
+import type { Reuniao, Documento, Comissao } from '@/types/database'
+import { ComissaoSelector } from './comissao-selector'
 
 const STATUS_DOC_MAP: Record<string, { label: string; cls: string }> = {
   recebido:  { label: 'Recebido',  cls: 'badge-blue' },
@@ -30,16 +31,18 @@ export default async function ReuniaoPage({ params }: { params: Promise<{ id: st
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: reuniao }, { data: documentos }, { data: presencas }] = await Promise.all([
+  const [{ data: reuniao }, { data: documentos }, { data: presencas }, { data: comissoes }] = await Promise.all([
     supabase.from('reunioes').select('*').eq('id', id).single(),
     supabase.from('documentos').select('*, comissao:comissoes(numero, nome)').eq('reuniao_id', id).order('numero'),
     supabase.from('reuniao_presencas').select('*, oficial:oficiais(nome, tipo)').eq('reuniao_id', id),
+    supabase.from('comissoes').select('id, numero, nome').or(`reuniao_id.eq.${id},reuniao_id.is.null`).order('numero'),
   ])
 
   if (!reuniao) notFound()
 
   const r = reuniao as Reuniao
   const docs = (documentos ?? []) as Documento[]
+  const comissoesList = (comissoes ?? []) as Pick<Comissao, 'id' | 'numero' | 'nome'>[]
   const presentes = presencas?.filter(p => p.presente) ?? []
   const totalPresentes = presentes.length
   const resolucoes = docs.filter(d => d.status === 'aprovado').length
@@ -145,10 +148,12 @@ export default async function ReuniaoPage({ params }: { params: Promise<{ id: st
                     {doc.tipo && <div className="text-xs text-gray-400 mt-0.5">{doc.tipo}</div>}
                   </td>
                   <td className="text-gray-500 text-sm">{doc.oriundo ?? 'Não informado'}</td>
-                  <td className="text-center">
-                    {comissao ? (
-                      <span className="badge badge-navy">Comissão {comissao.numero}</span>
-                    ) : <span className="text-gray-300">—</span>}
+                  <td>
+                    <ComissaoSelector
+                      docId={doc.id}
+                      comissaoId={doc.comissao_id}
+                      comissoes={comissoesList}
+                    />
                   </td>
                   <td><span className={`badge ${ds.cls}`}>{ds.label}</span></td>
                   <td style={{ paddingRight: 20 }}>
