@@ -593,7 +593,7 @@ export interface Ata {
 export interface AtaConteudo {
   verificacao_poderes: string
   sessao_preparatoria: string
-  sessao_regular: string
+  sessoes_regulares: string[]
   observacoes?: string
 }
 

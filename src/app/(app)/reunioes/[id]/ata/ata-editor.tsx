@@ -4,15 +4,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Ata, Reuniao, AtaConteudo } from '@/types/database'
 
-type SecaoKey = keyof AtaConteudo
-
-const SECOES: { key: SecaoKey; label: string; titulo: string; placeholder: string }[] = [
-  {
-    key: 'verificacao_poderes',
-    label: 'Verificação de Poderes',
-    titulo: 'ATA DO ATO DE VERIFICAÇÃO DE PODERES',
-    placeholder:
-      `ATA DO ATO DE VERIFICAÇÃO DE PODERES DA [Nº] REUNIÃO [ORDINÁRIA/EXTRAORDINÁRIA] DO PRESBITÉRIO LESTE DE SÃO PAULO - PSSP
+const PLACEHOLDER_VERIFICACAO = `ATA DO ATO DE VERIFICAÇÃO DE PODERES DA [Nº] REUNIÃO [ORDINÁRIA/EXTRAORDINÁRIA] DO PRESBITÉRIO LESTE DE SÃO PAULO - PSSP
 
 Às [HORA], do dia [DATA POR EXTENSO], na [LOCAL], reúne-se, previamente convocado, o Presbitério Leste de São Paulo - PSSP.
 
@@ -38,14 +30,9 @@ Havendo quórum, às [HORA], o Presidente, Rev. Amauri Costa de Oliveira, declar
 
 E para constar eu, Rev. Rogério de Castro Chaves, 2º Secretário, a tudo presente, digito, dato e assino a presente ATA, a qual será transcrita pelo Secretário Executivo, Presb. Anízio Alves Borges, em livro próprio.
 
-São Paulo, [DATA].`,
-  },
-  {
-    key: 'sessao_preparatoria',
-    label: 'Sessão Preparatória',
-    titulo: 'ATA DA SESSÃO PREPARATÓRIA',
-    placeholder:
-      `ATA DA SESSÃO PREPARATÓRIA DA [Nº] REUNIÃO [ORDINÁRIA/EXTRAORDINÁRIA] DO PRESBITÉRIO LESTE DE SÃO PAULO - PSSP
+São Paulo, [DATA].`
+
+const PLACEHOLDER_PREPARATORIA = `ATA DA SESSÃO PREPARATÓRIA DA [Nº] REUNIÃO [ORDINÁRIA/EXTRAORDINÁRIA] DO PRESBITÉRIO LESTE DE SÃO PAULO - PSSP
 
 Aos [DATA POR EXTENSO], às [HORA], passa-se ao exercício devocional.
 
@@ -62,16 +49,13 @@ O Rev. [QUEM] faz a leitura do texto bíblico de [REFERÊNCIA BÍBLICA] e minist
 
 E para constar eu, Rev. Rogério de Castro Chaves, 2º Secretário, a tudo presente, redijo, datilho e assino a presente ata, a qual será transcrita pelo Secretário Executivo, Presb. Anízio Alves Borges.
 
-São Paulo, [DATA].`,
-  },
-  {
-    key: 'sessao_regular',
-    label: 'Sessão Regular',
-    titulo: 'ATA DA SESSÃO REGULAR',
-    placeholder:
-      `ATA DA SESSÃO REGULAR [ÚNICA/Nº] DA [Nº] REUNIÃO [ORDINÁRIA/EXTRAORDINÁRIA] DO PRESBITÉRIO LESTE DE SÃO PAULO - PSSP
+São Paulo, [DATA].`
 
-Às [HORA], sob a presidência do Rev. Amauri Costa de Oliveira, inicia-se a sessão regular.
+function placeholderRegular(n: number) {
+  const ordinal = ['Única', '1ª', '2ª', '3ª', '4ª', '5ª'][n] ?? `${n}ª`
+  return `ATA DA SESSÃO REGULAR ${ordinal} DA [Nº] REUNIÃO [ORDINÁRIA/EXTRAORDINÁRIA] DO PRESBITÉRIO LESTE DE SÃO PAULO - PSSP
+
+Às [HORA], sob a presidência do Rev. Amauri Costa de Oliveira, inicia-se a sessão regular ${ordinal.toLowerCase()}.
 
 O Rev. [QUEM] ora ao Senhor, [DESCRIÇÃO].
 
@@ -81,56 +65,86 @@ Doc. 01, [DESCRIÇÃO DO DOCUMENTO].
 Doc. 02, [DESCRIÇÃO DO DOCUMENTO].
 [DELIBERAÇÃO]
 
-Doc. 03, [DESCRIÇÃO DO DOCUMENTO].
-[DELIBERAÇÃO]
-
 Encerra-se a reunião às [HORA], com a oração do Rev. [QUEM].
 
 E para constar eu, Rev. Rogério de Castro Chaves, 2º Secretário, a tudo presente, digito, dato e assino a presente ata, a qual será transcrita pelo Secretário Executivo, Presb. Anízio Alves Borges, em livro próprio.
 
-São Paulo, [DATA].`,
-  },
-  {
-    key: 'observacoes',
-    label: 'Observações',
-    titulo: 'Observações',
-    placeholder: 'Registros adicionais, notas para revisão, pendências...',
-  },
-]
+São Paulo, [DATA].`
+}
+
+function labelRegular(idx: number, total: number): string {
+  if (total === 1) return 'Sessão Regular'
+  return `${idx + 1}ª Sessão Regular`
+}
 
 const CONTEUDO_VAZIO: AtaConteudo = {
   verificacao_poderes: '',
   sessao_preparatoria: '',
-  sessao_regular: '',
+  sessoes_regulares: [''],
   observacoes: '',
 }
 
-function migrarConteudoAntigo(conteudo: Record<string, string>): AtaConteudo {
-  if ('verificacao_poderes' in conteudo) return conteudo as unknown as AtaConteudo
-  // migração de dados antigos: concatenar seções antigas nas novas
-  const verificacao_poderes = [conteudo.abertura, conteudo.verificacao_quorum].filter(Boolean).join('\n\n')
-  const sessao_regular = [conteudo.pauta, conteudo.deliberacoes, conteudo.encerramento].filter(Boolean).join('\n\n')
+function migrar(raw: Record<string, unknown>): AtaConteudo {
+  if (Array.isArray(raw.sessoes_regulares)) return raw as unknown as AtaConteudo
+  // dados antigos com sessao_regular (string) ou abertura/pauta
+  const antiga = (raw.sessao_regular as string | undefined)
+    ?? [raw.pauta, raw.deliberacoes, raw.encerramento].filter(Boolean).join('\n\n')
+  const verificacao_poderes = (raw.verificacao_poderes as string)
+    ?? [raw.abertura, raw.verificacao_quorum].filter(Boolean).join('\n\n')
   return {
-    verificacao_poderes,
-    sessao_preparatoria: '',
-    sessao_regular,
-    observacoes: conteudo.observacoes ?? '',
+    verificacao_poderes: verificacao_poderes ?? '',
+    sessao_preparatoria: (raw.sessao_preparatoria as string) ?? '',
+    sessoes_regulares: [antiga ?? ''],
+    observacoes: (raw.observacoes as string) ?? '',
   }
 }
+
+type Tab =
+  | { kind: 'verificacao' }
+  | { kind: 'preparatoria' }
+  | { kind: 'regular'; idx: number }
+  | { kind: 'obs' }
 
 export function AtaEditor({ reuniaoId, ata, reuniao }: { reuniaoId: string; ata: Ata | null; reuniao: Reuniao }) {
   const router = useRouter()
   const supabase = createClient()
   const [conteudo, setConteudo] = useState<AtaConteudo>(
-    ata ? migrarConteudoAntigo(ata.conteudo as unknown as Record<string, string>) : CONTEUDO_VAZIO
+    ata ? migrar(ata.conteudo as unknown as Record<string, unknown>) : CONTEUDO_VAZIO
   )
-  const [secaoAtiva, setSecaoAtiva] = useState<SecaoKey>('verificacao_poderes')
+  const [tab, setTab] = useState<Tab>({ kind: 'verificacao' })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  function setSecao(key: SecaoKey, value: string) {
+  function markDirty() { setSaved(false) }
+
+  function setFixo(key: 'verificacao_poderes' | 'sessao_preparatoria' | 'observacoes', value: string) {
     setConteudo(prev => ({ ...prev, [key]: value }))
-    setSaved(false)
+    markDirty()
+  }
+
+  function setRegular(idx: number, value: string) {
+    setConteudo(prev => {
+      const nova = [...prev.sessoes_regulares]
+      nova[idx] = value
+      return { ...prev, sessoes_regulares: nova }
+    })
+    markDirty()
+  }
+
+  function adicionarSessao() {
+    setConteudo(prev => ({ ...prev, sessoes_regulares: [...prev.sessoes_regulares, ''] }))
+    setTab({ kind: 'regular', idx: conteudo.sessoes_regulares.length })
+  }
+
+  function removerSessao(idx: number) {
+    if (conteudo.sessoes_regulares.length <= 1) return
+    setConteudo(prev => {
+      const nova = prev.sessoes_regulares.filter((_, i) => i !== idx)
+      return { ...prev, sessoes_regulares: nova }
+    })
+    const novoIdx = Math.max(0, idx - 1)
+    setTab({ kind: 'regular', idx: novoIdx })
+    markDirty()
   }
 
   async function salvar() {
@@ -138,63 +152,152 @@ export function AtaEditor({ reuniaoId, ata, reuniao }: { reuniaoId: string; ata:
     if (ata) {
       await supabase.from('atas').update({ conteudo }).eq('id', ata.id)
     } else {
-      await supabase.from('atas').insert({
-        reuniao_id: reuniaoId,
-        conteudo,
-        status: 'rascunho',
-      })
+      await supabase.from('atas').insert({ reuniao_id: reuniaoId, conteudo, status: 'rascunho' })
     }
     setSaving(false)
     setSaved(true)
     router.refresh()
   }
 
-  const secaoAtual = SECOES.find(s => s.key === secaoAtiva)!
-  const preenchimento = SECOES.filter(s => s.key !== 'observacoes')
-    .filter(s => (conteudo[s.key] ?? '').trim().length > 0).length
-  const totalPrincipais = 3
+  const total = conteudo.sessoes_regulares.length
+
+  // valor e placeholder da aba ativa
+  let valor = ''
+  let placeholder = ''
+  let descricao = ''
+  let titulo = ''
+
+  if (tab.kind === 'verificacao') {
+    valor = conteudo.verificacao_poderes
+    placeholder = PLACEHOLDER_VERIFICACAO
+    titulo = 'ATA DO ATO DE VERIFICAÇÃO DE PODERES'
+    descricao = 'Composição da mesa, chamada, quórum'
+  } else if (tab.kind === 'preparatoria') {
+    valor = conteudo.sessao_preparatoria
+    placeholder = PLACEHOLDER_PREPARATORIA
+    titulo = 'ATA DA SESSÃO PREPARATÓRIA'
+    descricao = 'Devocional, cânticos, oração, mensagem bíblica'
+  } else if (tab.kind === 'regular') {
+    valor = conteudo.sessoes_regulares[tab.idx] ?? ''
+    placeholder = placeholderRegular(total === 1 ? 0 : tab.idx + 1)
+    titulo = total === 1 ? 'ATA DA SESSÃO REGULAR' : `ATA DA ${tab.idx + 1}ª SESSÃO REGULAR`
+    descricao = 'Documentos, deliberações, encerramento'
+  } else {
+    valor = conteudo.observacoes ?? ''
+    placeholder = 'Registros adicionais, notas para revisão, pendências...'
+    titulo = 'Observações'
+    descricao = ''
+  }
+
+  function onChange(v: string) {
+    if (tab.kind === 'verificacao') setFixo('verificacao_poderes', v)
+    else if (tab.kind === 'preparatoria') setFixo('sessao_preparatoria', v)
+    else if (tab.kind === 'regular') setRegular(tab.idx, v)
+    else setFixo('observacoes', v)
+  }
+
+  function preenchida(t: Tab): boolean {
+    if (t.kind === 'verificacao') return conteudo.verificacao_poderes.trim().length > 0
+    if (t.kind === 'preparatoria') return conteudo.sessao_preparatoria.trim().length > 0
+    if (t.kind === 'regular') return (conteudo.sessoes_regulares[t.idx] ?? '').trim().length > 0
+    return false
+  }
+
+  function tabAtiva(t: Tab): boolean {
+    if (t.kind !== tab.kind) return false
+    if (t.kind === 'regular' && tab.kind === 'regular') return t.idx === tab.idx
+    return true
+  }
+
+  const cls = (t: Tab) =>
+    `px-3 py-3 text-xs font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-1.5 ${
+      tabAtiva(t)
+        ? 'border-b-2 text-gray-900'
+        : 'border-transparent text-gray-400 hover:text-gray-600'
+    }`
+
+  const preenchimentoCount = [
+    conteudo.verificacao_poderes.trim().length > 0,
+    conteudo.sessao_preparatoria.trim().length > 0,
+    ...conteudo.sessoes_regulares.map(s => s.trim().length > 0),
+  ].filter(Boolean).length
+  const totalSecoes = 2 + conteudo.sessoes_regulares.length
 
   return (
     <div className="card p-0 overflow-hidden">
       {/* Tabs */}
-      <div className="flex border-b border-gray-100 overflow-x-auto">
-        {SECOES.map(s => {
-          const preenchida = (conteudo[s.key] ?? '').trim().length > 0
-          const isObs = s.key === 'observacoes'
+      <div className="flex border-b border-gray-100 overflow-x-auto items-center">
+        {/* Verificação */}
+        <button
+          onClick={() => setTab({ kind: 'verificacao' })}
+          className={cls({ kind: 'verificacao' })}
+          style={tabAtiva({ kind: 'verificacao' }) ? { borderBottomColor: '#1B3A6B' } : {}}
+        >
+          {preenchida({ kind: 'verificacao' }) && <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />}
+          Verif. Poderes
+        </button>
+
+        {/* Preparatória */}
+        <button
+          onClick={() => setTab({ kind: 'preparatoria' })}
+          className={cls({ kind: 'preparatoria' })}
+          style={tabAtiva({ kind: 'preparatoria' }) ? { borderBottomColor: '#1B3A6B' } : {}}
+        >
+          {preenchida({ kind: 'preparatoria' }) && <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />}
+          Preparatória
+        </button>
+
+        {/* Sessões regulares */}
+        {conteudo.sessoes_regulares.map((_, idx) => {
+          const t: Tab = { kind: 'regular', idx }
           return (
-            <button
-              key={s.key}
-              onClick={() => setSecaoAtiva(s.key)}
-              className={`px-4 py-3 text-xs font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-1.5 ${
-                secaoAtiva === s.key
-                  ? 'border-navy-700 text-gray-900'
-                  : 'border-transparent text-gray-400 hover:text-gray-600'
-              }`}
-              style={secaoAtiva === s.key ? { borderBottomColor: '#1B3A6B' } : {}}
-            >
-              {preenchida && !isObs && (
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+            <div key={idx} className="flex items-center">
+              <button
+                onClick={() => setTab(t)}
+                className={cls(t)}
+                style={tabAtiva(t) ? { borderBottomColor: '#1B3A6B' } : {}}
+              >
+                {preenchida(t) && <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />}
+                {labelRegular(idx, total)}
+              </button>
+              {total > 1 && (
+                <button
+                  onClick={() => removerSessao(idx)}
+                  title="Remover sessão"
+                  className="px-1 text-gray-300 hover:text-red-400 text-xs leading-none mt-0.5"
+                >
+                  ✕
+                </button>
               )}
-              {s.label}
-            </button>
+            </div>
           )
         })}
+
+        {/* + Nova sessão */}
+        <button
+          onClick={adicionarSessao}
+          title="Adicionar sessão regular"
+          className="px-3 py-3 text-xs text-gray-400 hover:text-gray-700 border-transparent border-b-2 whitespace-nowrap transition-colors"
+        >
+          + Sessão
+        </button>
+
+        {/* Observações */}
+        <button
+          onClick={() => setTab({ kind: 'obs' })}
+          className={cls({ kind: 'obs' })}
+          style={tabAtiva({ kind: 'obs' }) ? { borderBottomColor: '#1B3A6B' } : {}}
+        >
+          Obs.
+        </button>
       </div>
 
-      {/* Editor area */}
+      {/* Editor */}
       <div className="p-5">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h3 className="font-semibold text-gray-900 text-sm">{secaoAtual.titulo}</h3>
-            {secaoAtiva === 'verificacao_poderes' && (
-              <p className="text-xs text-gray-400 mt-0.5">Abertura formal, composição da mesa, chamada, quórum</p>
-            )}
-            {secaoAtiva === 'sessao_preparatoria' && (
-              <p className="text-xs text-gray-400 mt-0.5">Devocional, cânticos, oração, mensagem bíblica</p>
-            )}
-            {secaoAtiva === 'sessao_regular' && (
-              <p className="text-xs text-gray-400 mt-0.5">Documentos, deliberações, encerramento</p>
-            )}
+            <h3 className="font-semibold text-gray-900 text-sm">{titulo}</h3>
+            {descricao && <p className="text-xs text-gray-400 mt-0.5">{descricao}</p>}
           </div>
           <div className="flex items-center gap-2">
             {saved && <span className="text-xs text-green-500">Salvo</span>}
@@ -209,9 +312,9 @@ export function AtaEditor({ reuniaoId, ata, reuniao }: { reuniaoId: string; ata:
           </div>
         </div>
         <textarea
-          value={conteudo[secaoAtiva] ?? ''}
-          onChange={e => setSecao(secaoAtiva, e.target.value)}
-          placeholder={secaoAtual.placeholder}
+          value={valor}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
           rows={20}
           className="w-full text-sm text-gray-800 leading-relaxed resize-none focus:outline-none font-mono"
           style={{ fontFamily: 'ui-monospace, "Courier New", monospace', fontSize: 13 }}
@@ -226,13 +329,17 @@ export function AtaEditor({ reuniaoId, ata, reuniao }: { reuniaoId: string; ata:
             : 'Ata não iniciada'}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-400">{preenchimento}/{totalPrincipais} seções preenchidas</span>
+          <span className="text-xs text-gray-400">{preenchimentoCount}/{totalSecoes} seções preenchidas</span>
           <div className="flex items-center gap-1">
-            {SECOES.filter(s => s.key !== 'observacoes').map(s => (
+            {[
+              { t: { kind: 'verificacao' } as Tab, label: 'VP' },
+              { t: { kind: 'preparatoria' } as Tab, label: 'SP' },
+              ...conteudo.sessoes_regulares.map((_, i) => ({ t: { kind: 'regular', idx: i } as Tab, label: `SR${i + 1}` })),
+            ].map(({ t, label }) => (
               <div
-                key={s.key}
-                title={s.label}
-                className={`w-2 h-2 rounded-full ${(conteudo[s.key] ?? '').trim() ? 'bg-green-400' : 'bg-gray-200'}`}
+                key={label}
+                title={label}
+                className={`w-2 h-2 rounded-full ${preenchida(t) ? 'bg-green-400' : 'bg-gray-200'}`}
               />
             ))}
           </div>
