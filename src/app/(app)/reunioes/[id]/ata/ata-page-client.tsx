@@ -34,7 +34,7 @@ function inicializarInseridos(docs: DocAta[], ata: Ata | null): Set<string> {
 
 const STATUS_LABEL: Record<string, string> = {
   rascunho: 'Rascunho',
-  em_aprovacao: 'Em aprovação',
+  em_aprovacao: 'Aguardando Aprovação',
   publicada: 'Publicada',
 }
 
@@ -95,7 +95,7 @@ export function AtaPageClient({
         )}
         {statusAtual === 'em_aprovacao' && (
           <span className="px-3 py-1.5 rounded-lg text-sm font-semibold text-amber-700 bg-amber-50 border border-amber-200">
-            Em aprovação
+            Aguardando Aprovação
           </span>
         )}
         {statusAtual === 'publicada' && (

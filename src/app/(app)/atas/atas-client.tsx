@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
   rascunho:     { label: 'Rascunho',      cls: 'badge-gray' },
-  em_aprovacao: { label: 'Em aprovação',  cls: 'badge-yellow' },
+  em_aprovacao: { label: 'Aguardando Aprovação', cls: 'badge-yellow' },
   em_revisao:   { label: 'Em revisão',    cls: 'badge-yellow' },
   aprovada:     { label: 'Aprovada',      cls: 'badge-navy' },
   publicada:    { label: 'Publicada',     cls: 'badge-green' },
