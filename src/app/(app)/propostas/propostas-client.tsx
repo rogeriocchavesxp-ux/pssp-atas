@@ -5,24 +5,34 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { DocProposta } from './page'
 
-const STATUS_LABEL: Record<string, string> = {
-  em_analise:  'Em análise',
-  em_votacao:  'Em votação',
-  aprovado:    'Aprovado',
-  rejeitado:   'Rejeitado',
-  recebido:    'Recebido',
-  arquivado:   'Arquivado',
-  retirado:    'Retirado',
+// Rótulos exibidos ao usuário na coluna Status
+function statusLabel(s: string): string {
+  if (s === 'em_votacao' || s === 'aprovado' || s === 'rejeitado') return 'Concluído'
+  if (s === 'em_analise') return 'Em análise'
+  return 'Recebido'
 }
 
-const STATUS_BADGE: Record<string, string> = {
-  em_analise: 'badge-blue',
+function statusBadge(s: string): string {
+  if (s === 'aprovado')  return 'badge-green'
+  if (s === 'rejeitado') return 'badge-red'
+  if (s === 'em_votacao') return 'badge-green'
+  if (s === 'em_analise') return 'badge-blue'
+  return 'badge-gray'
+}
+
+// Para agrupamento visual
+const GRUPO_LABEL: Record<string, string> = {
+  em_votacao: 'Aguardando votação do Plenário',
+  em_analise: 'Em análise nas comissões',
+  aprovado:   'Aprovados',
+  rejeitado:  'Rejeitados',
+}
+
+const GRUPO_BADGE: Record<string, string> = {
   em_votacao: 'bg-amber-100 text-amber-700',
+  em_analise: 'badge-blue',
   aprovado:   'badge-green',
   rejeitado:  'badge-red',
-  recebido:   'badge-gray',
-  arquivado:  'badge-gray',
-  retirado:   'badge-gray',
 }
 
 type Grupo = { key: string; label: string; docs: DocProposta[] }
@@ -127,8 +137,8 @@ export function PropostasClient({
             <div key={g.key}>
               {/* Cabeçalho do grupo */}
               <div className="flex items-center gap-3 mb-3">
-                <span className={`badge ${STATUS_BADGE[g.key] ?? 'badge-gray'} text-xs`}>
-                  {STATUS_LABEL[g.key]}
+                <span className={`badge ${GRUPO_BADGE[g.key] ?? 'badge-gray'} text-xs`}>
+                  {GRUPO_LABEL[g.key]}
                 </span>
                 <span className="text-xs text-gray-400">{g.docs.length} item(s)</span>
                 <div className="h-px flex-1 bg-gray-100" />
@@ -144,11 +154,9 @@ export function PropostasClient({
                       <th>Oriundo</th>
                       <th>Comissão</th>
                       <th>Reunião</th>
+                      <th>Status</th>
                       {isPresidente && g.key === 'em_votacao' && (
                         <th style={{ paddingRight: 20 }}>Ação</th>
-                      )}
-                      {g.key !== 'em_votacao' && (
-                        <th style={{ paddingRight: 20 }}>Status</th>
                       )}
                     </tr>
                   </thead>
@@ -181,6 +189,11 @@ export function PropostasClient({
                               </Link>
                             ) : '—'}
                           </td>
+                          <td style={{ paddingRight: isPresidente && g.key === 'em_votacao' ? 0 : 20 }}>
+                            <span className={`badge ${statusBadge(d.status)}`}>
+                              {statusLabel(d.status)}
+                            </span>
+                          </td>
                           {isPresidente && g.key === 'em_votacao' && (
                             <td style={{ paddingRight: 20 }} onClick={e => e.stopPropagation()}>
                               <div className="flex gap-2">
@@ -200,13 +213,6 @@ export function PropostasClient({
                                   Rejeitar
                                 </button>
                               </div>
-                            </td>
-                          )}
-                          {g.key !== 'em_votacao' && (
-                            <td style={{ paddingRight: 20 }}>
-                              <span className={`badge ${STATUS_BADGE[d.status] ?? 'badge-gray'}`}>
-                                {STATUS_LABEL[d.status] ?? d.status}
-                              </span>
                             </td>
                           )}
                         </tr>
@@ -234,8 +240,8 @@ export function PropostasClient({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-xs text-gray-400">Doc. {String(detalhe.numero).padStart(3, '0')}</span>
-                  <span className={`badge ${STATUS_BADGE[detalhe.status] ?? 'badge-gray'} text-xs`}>
-                    {STATUS_LABEL[detalhe.status] ?? detalhe.status}
+                  <span className={`badge ${statusBadge(detalhe.status)} text-xs`}>
+                    {statusLabel(detalhe.status)}
                   </span>
                 </div>
                 <h2 className="font-semibold text-gray-900 mt-1">{detalhe.assunto}</h2>
