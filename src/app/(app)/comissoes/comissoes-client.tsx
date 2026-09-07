@@ -16,6 +16,16 @@ type ComissaoLocal = Omit<Comissao, 'membros'> & { membros?: Membro[] }
 
 const FUNCAO_MAP: Record<string, string> = { relator: 'Relator', membro: 'Membro' }
 
+function toRoman(n: number): string {
+  const vals = [1000,900,500,400,100,90,50,40,10,9,5,4,1]
+  const syms = ['M','CM','D','CD','C','XC','L','XL','X','IX','V','IV','I']
+  let r = ''
+  for (let i = 0; i < vals.length; i++) {
+    while (n >= vals[i]) { r += syms[i]; n -= vals[i] }
+  }
+  return r
+}
+
 const STATUS_DOC: Record<string, { label: string; cls: string }> = {
   recebido:  { label: 'Recebido',   cls: 'badge-gray' },
   em_pauta:  { label: 'Em pauta',   cls: 'badge-blue' },
@@ -217,14 +227,13 @@ export function ComissoesClient({
             <div key={c.id} className="card">
               <div className="flex items-center gap-3 mb-3">
                 <div
-                  className="w-9 h-9 rounded-lg text-white text-sm font-bold flex items-center justify-center flex-shrink-0"
+                  className="w-9 h-9 rounded-lg text-white text-xs font-bold flex items-center justify-center flex-shrink-0 font-serif"
                   style={{ background: '#B8962E' }}
                 >
-                  {c.numero}
+                  {toRoman(c.numero)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-gray-900">Comissão {c.numero}</div>
-                  {c.nome && <div className="text-xs text-gray-400 truncate">{c.nome}</div>}
+                  <div className="font-semibold text-gray-900 truncate">{c.nome ?? `Comissão ${toRoman(c.numero)}`}</div>
                 </div>
               </div>
               <div className="text-xs text-gray-500 mb-3">
@@ -372,7 +381,7 @@ export function ComissoesClient({
             <div className="w-1/2 flex flex-col overflow-hidden">
               <div className="px-5 py-2.5 border-b border-gray-100 bg-gray-50 flex-shrink-0 flex items-center justify-between">
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Proposta</span>
-                <span className="text-xs text-gray-400">Comissão {gerenciando?.numero}</span>
+                <span className="text-xs text-gray-400">Comissão {gerenciando ? toRoman(gerenciando.numero) : ''}</span>
               </div>
               <div className="flex-1 p-5 flex flex-col">
                 <textarea
@@ -396,7 +405,7 @@ export function ComissoesClient({
             {/* Cabeçalho */}
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
               <div>
-                <h2 className="font-semibold text-gray-900">Comissão {gerenciando.numero}</h2>
+                <h2 className="font-semibold text-gray-900">Comissão {toRoman(gerenciando.numero)}{gerenciando.nome ? ` — ${gerenciando.nome}` : ''}</h2>
                 {gerenciando.nome && <p className="text-xs text-gray-400 mt-0.5">{gerenciando.nome}</p>}
               </div>
               <button onClick={() => { setGerenciando(null); setEditandoDoc(null) }} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
