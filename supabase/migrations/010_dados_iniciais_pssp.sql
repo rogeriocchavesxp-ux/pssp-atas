@@ -118,25 +118,26 @@ WHERE NOT EXISTS (SELECT 1 FROM oficiais WHERE oficiais.nome = v.nome);
 
 -- ── SEMINARISTAS ─────────────────────────────────────────────
 
-INSERT INTO seminaristas (nome, email, seminario, curso_ano, status, igreja_id, ativo)
-SELECT v.nome, v.email, v.seminario, v.curso_ano, v.status,
+INSERT INTO seminaristas (nome, email, seminario, curso_ano, ano_inicio, ano_formacao, status, igreja_id, ativo)
+SELECT v.nome, v.email, v.seminario, v.curso_ano, v.ano_inicio, v.ano_formacao, v.status,
        CASE WHEN v.sigla IS NOT NULL
             THEN (SELECT id FROM igrejas WHERE sigla = v.sigla LIMIT 1)
             ELSE null
        END,
        true
 FROM (VALUES
-  ('Guilherme Francisco Rodrigues Paes Athú', 'guilhermeathu@gmail.com',    'JMC',                2::int,    'cursando'::text,   'IPPenha'::text),
-  ('Tiago Rocha Vargas Henrique',             'henriquertiago@outlook.com', 'SPS',                3::int,    'cursando',         'IPPenha'),
-  ('Daniel Simões de Carvalho',               'dani3l244@gmail.com',        'SPS',                4::int,    'cursando',         'IPPenha'),
-  ('Rafael Garcia de Sá',                     'rafagsa@gmail.com',          'SPS',                2::int,    'cursando',         null),
-  ('Lucas Johann Cruvinel Carvalho',          'johanncruvinel@gmail.com',   'JMC',                3::int,    'cursando',         null),
-  ('Sidney Faria dos Reis Júnior',            null::text,                   'SPS',                4::int,    'cursando',         'IPPenha'),
-  ('Gladston Lucas Oliveira',                 null::text,                   'Andrew Jumper (EAD)',null::int,  'cursando',         'IPPenha'),
-  ('Éfferson Soares Luz',                     null::text,                   'JMC',                null::int, 'licenciado',       null::text),
-  ('Paulo Andrés Erben Castro',               'erbenpaulo@gmail.com',       'JMC',                null::int, 'aprovado',         'IPPenha'),
-  ('Gabriel Bastos Ricci Justino',            null::text,                   'SPS',                null::int, 'aprovado',         null::text)
-) AS v(nome, email, seminario, curso_ano, status, sigla)
+  --                                                                                         curso  inicio   formação
+  ('Guilherme Francisco Rodrigues Paes Athú', 'guilhermeathu@gmail.com',    'JMC',          2::int, 2025::int, null::int, 'cursando'::text,  'IPPenha'::text),
+  ('Tiago Rocha Vargas Henrique',             'henriquertiago@outlook.com', 'SPS',          3::int, 2024::int, null::int, 'cursando',        'IPPenha'),
+  ('Daniel Simões de Carvalho',               'dani3l244@gmail.com',        'SPS',          4::int, 2023::int, null::int, 'cursando',        'IPPenha'),
+  ('Rafael Garcia de Sá',                     'rafagsa@gmail.com',          'SPS',          2::int, 2025::int, null::int, 'cursando',        null),
+  ('Lucas Johann Cruvinel Carvalho',          'johanncruvinel@gmail.com',   'JMC',          3::int, 2024::int, null::int, 'cursando',        null),
+  ('Sidney Faria dos Reis Júnior',            null::text,                   'SPS',          4::int, 2023::int, null::int, 'cursando',        'IPPenha'),
+  ('Gladston Lucas Oliveira',                 null::text,                   'Andrew Jumper (EAD)', null::int, 2025::int, null::int, 'cursando', 'IPPenha'),
+  ('Éfferson Soares Luz',                     null::text,                   'JMC',          null::int, null::int, 2024::int, 'licenciado',    null::text),
+  ('Paulo Andrés Erben Castro',               'erbenpaulo@gmail.com',       'JMC',          null::int, 2021::int, 2025::int, 'aprovado',      'IPPenha'),
+  ('Gabriel Bastos Ricci Justino',            null::text,                   'SPS',          null::int, null::int, 2025::int, 'aprovado',      null::text)
+) AS v(nome, email, seminario, curso_ano, ano_inicio, ano_formacao, status, sigla)
 WHERE NOT EXISTS (SELECT 1 FROM seminaristas WHERE seminaristas.nome = v.nome);
 
 -- ── COMISSÃO EXECUTIVA (histórico) ───────────────────────────

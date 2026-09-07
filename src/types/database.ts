@@ -454,6 +454,8 @@ export interface Seminarista {
   telefone: string | null
   seminario: string | null
   curso_ano: number | null
+  ano_inicio: number | null
+  ano_formacao: number | null
   status: 'cursando' | 'licenciado' | 'aprovado' | 'desistiu'
   igreja_id: string | null
   ativo: boolean

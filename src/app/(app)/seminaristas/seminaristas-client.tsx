@@ -23,7 +23,8 @@ export function SeminaristasClient({ seminaristas: inicial, igrejas }: { seminar
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState('')
   const [form, setForm] = useState({
-    nome: '', email: '', telefone: '', seminario: '', curso_ano: '', status: 'cursando', igreja_id: '',
+    nome: '', email: '', telefone: '', seminario: '', curso_ano: '',
+    ano_inicio: '', ano_formacao: '', status: 'cursando', igreja_id: '',
   })
 
   function set(f: string, v: string) { setForm(p => ({ ...p, [f]: v })) }
@@ -38,6 +39,8 @@ export function SeminaristasClient({ seminaristas: inicial, igrejas }: { seminar
       telefone: form.telefone.trim() || null,
       seminario: form.seminario.trim() || null,
       curso_ano: form.curso_ano ? parseInt(form.curso_ano) : null,
+      ano_inicio: form.ano_inicio ? parseInt(form.ano_inicio) : null,
+      ano_formacao: form.ano_formacao ? parseInt(form.ano_formacao) : null,
       status: form.status,
       igreja_id: form.igreja_id || null,
       ativo: true,
@@ -47,7 +50,7 @@ export function SeminaristasClient({ seminaristas: inicial, igrejas }: { seminar
     if (data) {
       setLista(prev => [...prev, data as SemRow].sort((a, b) => a.nome.localeCompare(b.nome)))
       setModal(false)
-      setForm({ nome: '', email: '', telefone: '', seminario: '', curso_ano: '', status: 'cursando', igreja_id: '' })
+      setForm({ nome: '', email: '', telefone: '', seminario: '', curso_ano: '', ano_inicio: '', ano_formacao: '', status: 'cursando', igreja_id: '' })
       router.refresh()
     }
   }
@@ -77,12 +80,14 @@ export function SeminaristasClient({ seminaristas: inicial, igrejas }: { seminar
               <th>Seminário</th>
               <th>Igreja</th>
               <th>Ano</th>
+              <th>Início</th>
+              <th>Formação</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody>
             {lista.length === 0 ? (
-              <tr><td colSpan={5} className="text-center text-gray-400 py-12">Nenhum seminarista cadastrado</td></tr>
+              <tr><td colSpan={7} className="text-center text-gray-400 py-12">Nenhum seminarista cadastrado</td></tr>
             ) : lista.map(s => {
               const st = STATUS_MAP[s.status] ?? { label: s.status, cls: 'badge-gray' }
               return (
@@ -96,6 +101,8 @@ export function SeminaristasClient({ seminaristas: inicial, igrejas }: { seminar
                     {s.igreja ? (s.igreja.sigla ?? s.igreja.nome) : '—'}
                   </td>
                   <td className="text-gray-500 text-sm">{s.curso_ano ?? '—'}</td>
+                  <td className="text-gray-500 text-sm">{s.ano_inicio ?? '—'}</td>
+                  <td className="text-gray-500 text-sm">{s.ano_formacao ?? '—'}</td>
                   <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
                 </tr>
               )
@@ -120,11 +127,21 @@ export function SeminaristasClient({ seminaristas: inicial, igrejas }: { seminar
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Seminário</label>
-                  <input className={cls} value={form.seminario} onChange={e => set('seminario', e.target.value)} placeholder="Ex: STBSB" />
+                  <input className={cls} value={form.seminario} onChange={e => set('seminario', e.target.value)} placeholder="Ex: SPS, JMC" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Ano do curso</label>
                   <input type="number" min={1} max={8} className={cls} value={form.curso_ano} onChange={e => set('curso_ano', e.target.value)} placeholder="1–8" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Ano de início</label>
+                  <input type="number" min={2000} max={2100} className={cls} value={form.ano_inicio} onChange={e => set('ano_inicio', e.target.value)} placeholder="Ex: 2023" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Ano de formação</label>
+                  <input type="number" min={2000} max={2100} className={cls} value={form.ano_formacao} onChange={e => set('ano_formacao', e.target.value)} placeholder="Ex: 2028" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
