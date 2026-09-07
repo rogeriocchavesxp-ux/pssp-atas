@@ -197,7 +197,6 @@ export function ComissoesClient({
     setModalTab('membros')
     setErroMembro('')
     setAddMembro({ oficial_id: '', funcao: 'membro' })
-    setEditandoDoc(null)
   }
 
   return (
