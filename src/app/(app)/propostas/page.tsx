@@ -36,7 +36,7 @@ export default async function PropostasPage() {
   return (
     <PropostasClient
       docs={(docs ?? []) as unknown as DocProposta[]}
-      isPresidente={papel === 'presidente'}
+      isPresidente={papel === 'presidente' || papel === 'admin'}
       userId={user?.id ?? null}
     />
   )
