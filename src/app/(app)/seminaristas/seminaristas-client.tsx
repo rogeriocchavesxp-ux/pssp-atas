@@ -84,6 +84,13 @@ export function SeminaristasClient({
   const aprovado   = lista.filter(s => s.status === 'aprovado')
 
   const total = candidatos.length + cursando.length + licenciado.length + aprovado.length
+  const anoAtual = new Date().getFullYear()
+  const formandosEsteAno = cursando.filter(s => s.ano_formacao === anoAtual)
+  const semPorSeminario = cursando.reduce<Record<string, number>>((acc, s) => {
+    const k = s.seminario ?? 'Outro'
+    acc[k] = (acc[k] ?? 0) + 1
+    return acc
+  }, {})
 
   const thCls = 'text-left text-xs font-semibold text-gray-400 uppercase tracking-wide py-2.5 px-4'
 
@@ -116,6 +123,38 @@ export function SeminaristasClient({
           + Novo seminarista
         </button>
       </div>
+
+      {/* ── DASHBOARD ── */}
+      <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="card py-4 px-5">
+          <div className="text-2xl font-bold text-gray-900">{candidatos.length}</div>
+          <div className="text-xs text-gray-400 mt-0.5">Candidatos</div>
+        </div>
+        <div className="card py-4 px-5">
+          <div className="text-2xl font-bold" style={{ color: '#1B3A6B' }}>{cursando.length}</div>
+          <div className="text-xs text-gray-400 mt-0.5">Cursando</div>
+          {Object.entries(semPorSeminario).map(([sem, n]) => (
+            <div key={sem} className="text-xs text-gray-400 mt-1">
+              {sem} <span className="font-medium text-gray-600">{n}</span>
+            </div>
+          ))}
+        </div>
+        <div className="card py-4 px-5">
+          <div className="text-2xl font-bold text-gray-900">{licenciado.length}</div>
+          <div className="text-xs text-gray-400 mt-0.5">Licenciados</div>
+        </div>
+        <div className="card py-4 px-5">
+          <div className="text-2xl font-bold text-green-600">{aprovado.length}</div>
+          <div className="text-xs text-gray-400 mt-0.5">Aprovados / Ordenados</div>
+        </div>
+      </div>
+
+      {formandosEsteAno.length > 0 && (
+        <div className="mb-6 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 text-sm text-amber-800">
+          <span className="font-semibold">Formandos em {anoAtual}:</span>{' '}
+          {formandosEsteAno.map(s => s.nome.split(' ').slice(0, 2).join(' ')).join(', ')}
+        </div>
+      )}
 
       <div className="card p-0 overflow-hidden">
         {/* ── CANDIDATOS ── */}
