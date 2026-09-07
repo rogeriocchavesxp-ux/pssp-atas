@@ -338,73 +338,85 @@ export function AtaEditor({ reuniaoId, ata, reuniao, docs = [] }: { reuniaoId: s
         </button>
       </div>
 
-      {/* Editor */}
-      <div className="p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="font-semibold text-gray-900 text-sm">{titulo}</h3>
-            {descricao && <p className="text-xs text-gray-400 mt-0.5">{descricao}</p>}
+      {/* Editor + painel lateral (split quando na sessão regular) */}
+      <div className={tab.kind === 'regular' && docs.length > 0 ? 'flex overflow-hidden' : ''}>
+        {/* Textarea */}
+        <div className={`p-5 ${tab.kind === 'regular' && docs.length > 0 ? 'flex-1 min-w-0 border-r border-gray-100' : ''}`}>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="font-semibold text-gray-900 text-sm">{titulo}</h3>
+              {descricao && <p className="text-xs text-gray-400 mt-0.5">{descricao}</p>}
+            </div>
+            <div className="flex items-center gap-2">
+              {saved && <span className="text-xs text-green-500">Salvo</span>}
+              <button
+                onClick={salvar}
+                disabled={saving}
+                className="px-3 py-1.5 rounded-md text-xs font-semibold text-white disabled:opacity-60"
+                style={{ background: '#1B3A6B' }}
+              >
+                {saving ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {saved && <span className="text-xs text-green-500">Salvo</span>}
-            <button
-              onClick={salvar}
-              disabled={saving}
-              className="px-3 py-1.5 rounded-md text-xs font-semibold text-white disabled:opacity-60"
-              style={{ background: '#1B3A6B' }}
-            >
-              {saving ? 'Salvando...' : 'Salvar'}
-            </button>
-          </div>
+          <textarea
+            value={valor}
+            onChange={e => onChange(e.target.value)}
+            placeholder={placeholder}
+            rows={20}
+            className="w-full text-sm text-gray-800 leading-relaxed resize-none focus:outline-none font-mono"
+            style={{ fontFamily: 'ui-monospace, "Courier New", monospace', fontSize: 13 }}
+          />
         </div>
-        <textarea
-          value={valor}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          rows={20}
-          className="w-full text-sm text-gray-800 leading-relaxed resize-none focus:outline-none font-mono"
-          style={{ fontFamily: 'ui-monospace, "Courier New", monospace', fontSize: 13 }}
-        />
-      </div>
 
-      {/* Documentos da reunião — apenas na sessão regular */}
-      {tab.kind === 'regular' && docs.length > 0 && (
-        <div className="border-t border-gray-100 px-5 py-4">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
-            Documentos da reunião
-          </p>
-          <div className="space-y-2">
-            {docs.map(d => {
-              const temResolucao = !!d.resolucao
-              const jaInserido = conteudo.sessoes_regulares.some(s => s.includes(`DOC.${toRoman(d.resolucao?.numero ?? 0)}`))
-              return (
-                <div key={d.id} className="flex items-start gap-3">
-                  <span className="font-mono text-xs font-semibold text-gray-400 w-7 flex-shrink-0 mt-0.5">
-                    {String(d.numero).padStart(3, '0')}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs text-gray-700 leading-snug truncate">{d.assunto}</div>
-                    {d.oriundo && <div className="text-xs text-gray-400">{d.oriundo}</div>}
+        {/* Painel documentos — lado direito, apenas na sessão regular */}
+        {tab.kind === 'regular' && docs.length > 0 && (
+          <div className="w-72 flex-shrink-0 p-4 overflow-y-auto" style={{ maxHeight: 520 }}>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+              Documentos
+            </p>
+            <div className="space-y-3">
+              {docs.map(d => {
+                const temResolucao = !!d.resolucao
+                // usa regex para não confundir DOC.I com DOC.II, DOC.III etc.
+                const roman = temResolucao ? toRoman(d.resolucao!.numero) : ''
+                const jaInserido = temResolucao && conteudo.sessoes_regulares.some(s =>
+                  new RegExp(`DOC\\.${roman}(?![IVXLCDM])`).test(s)
+                )
+                return (
+                  <div key={d.id} className="space-y-1">
+                    <div className="flex items-start gap-2">
+                      <span className="font-mono text-xs font-semibold text-gray-400 flex-shrink-0">
+                        {String(d.numero).padStart(3, '0')}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-gray-700 leading-snug">{d.assunto}</div>
+                        {d.oriundo && <div className="text-xs text-gray-400">{d.oriundo}</div>}
+                      </div>
+                    </div>
+                    <div className="pl-7">
+                      {temResolucao ? (
+                        <button
+                          onClick={() => inserirNaAta(d)}
+                          disabled={jaInserido}
+                          className="text-xs px-2 py-0.5 rounded font-semibold w-full text-center disabled:cursor-default"
+                          style={jaInserido
+                            ? { background: '#f3f4f6', color: '#9ca3af' }
+                            : { background: '#1B3A6B', color: '#fff' }}
+                        >
+                          {jaInserido ? 'Inserido' : 'Inserir na Ata'}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-300 italic">sem resolução</span>
+                      )}
+                    </div>
                   </div>
-                  {temResolucao ? (
-                    <button
-                      onClick={() => inserirNaAta(d)}
-                      disabled={jaInserido}
-                      className="text-xs px-2 py-1 rounded font-semibold flex-shrink-0 disabled:opacity-40 disabled:cursor-default"
-                      style={jaInserido ? { background: '#e5e7eb', color: '#9ca3af' } : { background: '#1B3A6B', color: '#fff' }}
-                      title={jaInserido ? 'Já inserido' : 'Inserir na ata'}
-                    >
-                      {jaInserido ? 'Inserido' : 'Inserir na Ata'}
-                    </button>
-                  ) : (
-                    <span className="text-xs text-gray-300 flex-shrink-0 italic">sem resolução</span>
-                  )}
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Footer */}
       <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
