@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { AtaEditor } from './ata-editor'
+import { AtaPageClient } from './ata-page-client'
 import type { Reuniao, Ata } from '@/types/database'
 
 export type DocAta = {
@@ -64,29 +64,12 @@ export default async function AtaPage({ params }: { params: Promise<{ id: string
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
-        {/* Editor */}
-        <div className="col-span-2">
-          <AtaEditor reuniaoId={id} ata={ata} reuniao={r} docs={docs as unknown as DocAta[]} />
-        </div>
-
-        {/* Aprovações */}
-        <div className="space-y-4">
-          {ata && (
-            <div className="card">
-              <h3 className="font-semibold text-gray-900 mb-3 text-sm">Aprovações da ata</h3>
-              <div className="space-y-2">
-                {['Moderador', '1º Secretário', '2º Secretário'].map(cargo => (
-                  <div key={cargo} className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">{cargo}</span>
-                    <span className="badge badge-gray text-xs">Pendente</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <AtaPageClient
+        reuniaoId={id}
+        ata={ata}
+        reuniao={r}
+        docs={docs as unknown as DocAta[]}
+      />
     </div>
   )
 }
