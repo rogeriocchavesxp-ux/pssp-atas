@@ -32,6 +32,7 @@ function AtaTabela({
   podeAprovar: boolean
   aprovando: string | null
   onAprovar: (ata: AtaRow) => void
+  onVer: (ata: AtaRow) => void
 }) {
   return (
     <div className="card p-0 overflow-hidden">
@@ -80,7 +81,7 @@ function AtaTabela({
                     )}
                     {ata.status === 'publicada' ? (
                       <button
-                        onClick={() => abrirViewer(ata)}
+                        onClick={() => onVer(ata)}
                         className="text-xs font-medium px-3 py-1.5 rounded-md border"
                         style={{ color: '#1B3A6B', borderColor: '#1B3A6B' }}
                       >
@@ -153,6 +154,7 @@ export function AtasClient({ atas, podeAprovar }: { atas: AtaRow[]; podeAprovar:
           podeAprovar={podeAprovar}
           aprovando={aprovando}
           onAprovar={handleAprovar}
+          onVer={abrirViewer}
         />
       </div>
 
@@ -166,6 +168,7 @@ export function AtasClient({ atas, podeAprovar }: { atas: AtaRow[]; podeAprovar:
           podeAprovar={false}
           aprovando={null}
           onAprovar={() => {}}
+          onVer={abrirViewer}
         />
       </div>
     </div>
