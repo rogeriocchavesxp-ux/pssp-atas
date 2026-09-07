@@ -19,13 +19,21 @@ function toRoman(n: number): string {
   return r
 }
 
+function codigoTipoReuniao(tipo: string): string {
+  if (tipo === 'extraordinaria') return 'E'
+  if (tipo === 'solene') return 'S'
+  if (tipo === 'administrativa') return 'A'
+  return 'O'
+}
+
 function gerarTextoResolucao(doc: DocAta, reuniao: Reuniao): string {
   const res = doc.resolucao
   const com = doc.comissao
   if (!res || !com) return ''
 
   const ano = new Date(reuniao.data_inicio).getFullYear()
-  const codigoReuniao = `${reuniao.numero} ${ano}`
+  const tipo = codigoTipoReuniao(reuniao.tipo)
+  const codigoReuniao = `PSSP-${tipo} ${ano}`
   const nomeComissao = com.nome ?? 'Plenário'
 
   const cabecalho = `COMISSÃO ${toRoman(com.numero)} - ${nomeComissao} - ${codigoReuniao} - DOC.${toRoman(res.numero)}`
@@ -37,10 +45,10 @@ function gerarTextoResolucao(doc: DocAta, reuniao: Reuniao): string {
   ].filter(Boolean)
 
   if (doc.conteudo?.trim()) {
-    partes.push(`Considerando: ${doc.conteudo.trim()}`)
+    partes.push(`\nConsiderando: ${doc.conteudo.trim()}`)
   }
 
-  partes.push(`O PSSP RESOLVE: ${doc.proposta?.trim() ?? ''}`)
+  partes.push(`\nO PSSP-${tipo} - ${ano} Resolve:\n${doc.proposta?.trim() ?? ''}`)
 
   return `${cabecalho}\n${partes.join(' ')}`
 }
