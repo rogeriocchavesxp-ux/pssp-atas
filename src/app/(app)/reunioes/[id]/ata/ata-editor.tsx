@@ -48,7 +48,10 @@ function gerarTextoResolucao(doc: DocAta, reuniao: Reuniao): string {
     partes.push(`\nConsiderando: ${doc.conteudo.trim()}`)
   }
 
-  partes.push(`\nO PSSP-${tipo} - ${ano} Resolve:\n${doc.proposta?.trim() ?? ''}`)
+  // Remove prefixos legados ("O PSSP RESOLVE:", "O PSSP-O - 2026 Resolve:" etc.) que
+  // o usuário possa ter digitado na proposta antes de existir geração automática
+  const proposta = (doc.proposta?.trim() ?? '').replace(/^O PSSP[^:]*:\s*/i, '')
+  partes.push(`\nO PSSP-${tipo} - ${ano} Resolve:\n${proposta}`)
 
   return `${cabecalho}\n${partes.join(' ')}`
 }
