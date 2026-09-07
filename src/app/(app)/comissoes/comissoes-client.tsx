@@ -65,9 +65,6 @@ export function ComissoesClient({
   const [savingMembro, setSavingMembro] = useState(false)
   const [erroMembro, setErroMembro] = useState('')
 
-  // edição de parecer
-  const [editandoDoc, setEditandoDoc] = useState<{ id: string; conteudo: string } | null>(null)
-  const [savingDoc, setSavingDoc] = useState(false)
 
   // modal de proposta (split-screen)
   const [propostaDoc, setPropostaDoc] = useState<DocComissao | null>(null)
@@ -139,16 +136,6 @@ export function ComissoesClient({
       ? { ...prev, membros: (prev.membros ?? []).filter(m => m.id !== membroId) }
       : prev
     )
-  }
-
-  // ── Salvar parecer do documento ───────────────────────────────
-  async function salvarDoc() {
-    if (!editandoDoc) return
-    setSavingDoc(true)
-    await supabase.from('documentos').update({ conteudo: editandoDoc.conteudo }).eq('id', editandoDoc.id)
-    setSavingDoc(false)
-    setEditandoDoc(null)
-    router.refresh()
   }
 
   // ── Abrir modal de proposta ───────────────────────────────────
@@ -535,7 +522,6 @@ export function ComissoesClient({
                     <div className="space-y-4">
                       {docsComissao.map(doc => {
                         const st = STATUS_DOC[doc.status] ?? { label: doc.status, cls: 'badge-gray' }
-                        const editando = editandoDoc?.id === doc.id
                         return (
                           <div key={doc.id} className="border border-gray-100 rounded-lg p-4">
                             {/* Cabeçalho do doc */}
@@ -556,67 +542,26 @@ export function ComissoesClient({
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0">
                                 <span className={`badge ${st.cls}`}>{st.label}</span>
-                                {podeEditarDoc && !editando && (
-                                  <>
-                                    <button
-                                      onClick={() => setEditandoDoc({ id: doc.id, conteudo: doc.conteudo ?? '' })}
-                                      className="text-xs px-2 py-1 rounded border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
-                                    >
-                                      Parecer
-                                    </button>
-                                    <button
-                                      onClick={() => abrirProposta(doc)}
-                                      className="text-xs px-2 py-1 rounded text-white font-semibold transition-colors"
-                                      style={{ background: '#1B3A6B' }}
-                                    >
-                                      {doc.proposta ? 'Ver proposta' : 'Lançar proposta'}
-                                    </button>
-                                  </>
+                                {podeEditarDoc && (
+                                  <button
+                                    onClick={() => abrirProposta(doc)}
+                                    className="text-xs px-2 py-1 rounded text-white font-semibold transition-colors"
+                                    style={{ background: '#1B3A6B' }}
+                                  >
+                                    {doc.proposta ? 'Ver proposta' : 'Lançar proposta'}
+                                  </button>
                                 )}
                               </div>
                             </div>
 
-                            {/* Parecer atual (não editando) */}
-                            {!editando && doc.conteudo && (
-                              <div className="mt-2 p-3 bg-gray-50 rounded-md text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">
-                                {doc.conteudo}
+                            {/* Proposta resumida */}
+                            {doc.proposta ? (
+                              <div className="mt-2 p-3 bg-gray-50 rounded-md text-xs text-gray-600 line-clamp-2 leading-relaxed font-serif">
+                                {doc.proposta}
                               </div>
-                            )}
-
-                            {/* Editor inline */}
-                            {editando && editandoDoc && (
-                              <div className="mt-2 space-y-2">
-                                <label className="block text-xs font-medium text-gray-500">Parecer da comissão</label>
-                                <textarea
-                                  rows={6}
-                                  className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-1 resize-none"
-                                  value={editandoDoc.conteudo}
-                                  onChange={e => setEditandoDoc({ ...editandoDoc, conteudo: e.target.value })}
-                                  placeholder="Redija o parecer ou análise da comissão sobre este documento..."
-                                />
-                                <div className="flex gap-2 justify-end">
-                                  <button
-                                    onClick={() => setEditandoDoc(null)}
-                                    className="px-3 py-1.5 text-xs rounded-md border border-gray-200 text-gray-600"
-                                  >
-                                    Cancelar
-                                  </button>
-                                  <button
-                                    onClick={salvarDoc}
-                                    disabled={savingDoc}
-                                    className="px-3 py-1.5 text-xs rounded-md text-white font-semibold disabled:opacity-60"
-                                    style={{ background: '#1B3A6B' }}
-                                  >
-                                    {savingDoc ? 'Salvando...' : 'Salvar parecer'}
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Sem parecer ainda */}
-                            {!editando && !doc.conteudo && (
+                            ) : (
                               <p className="text-xs text-gray-400 mt-2 italic">
-                                {podeEditarDoc ? 'Nenhum parecer redigido ainda.' : 'Aguardando parecer do relator.'}
+                                {podeEditarDoc ? 'Nenhuma proposta redigida ainda.' : 'Aguardando proposta do relator.'}
                               </p>
                             )}
                           </div>
