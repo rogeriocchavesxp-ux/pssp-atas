@@ -249,8 +249,8 @@ function AtaEditorInner({ reuniaoId, ata, reuniao }, ref) {
     descricao = 'Documentos, deliberações, encerramento'
   } else {
     valor = conteudo.observacoes ?? ''
-    placeholder = 'Registros adicionais, notas para revisão, pendências...'
-    titulo = 'Observações'
+    placeholder = 'Anotações internas, notas para revisão, pendências...'
+    titulo = 'Anotações'
     descricao = ''
   }
 
@@ -347,13 +347,13 @@ function AtaEditorInner({ reuniaoId, ata, reuniao }, ref) {
           + Sessão
         </button>
 
-        {/* Observações */}
+        {/* Anotações */}
         <button
           onClick={() => setTab({ kind: 'obs' })}
           className={cls({ kind: 'obs' })}
           style={tabAtiva({ kind: 'obs' }) ? { borderBottomColor: '#1B3A6B' } : {}}
         >
-          Obs.
+          Anotações
         </button>
       </div>
 
