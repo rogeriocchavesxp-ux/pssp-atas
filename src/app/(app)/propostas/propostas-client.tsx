@@ -115,6 +115,15 @@ export function PropostasClient({
     router.refresh()
   }
 
+  async function devolver(doc: DocProposta) {
+    setAtualizando(doc.id)
+    await supabase.from('documentos').update({ status: 'em_analise' }).eq('id', doc.id)
+    setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, status: 'em_analise' } : d))
+    setDetalhe(null)
+    setAtualizando(null)
+    router.refresh()
+  }
+
   const total = docs.length
   const emVotacao = grupos[0].docs.length
 
@@ -235,7 +244,7 @@ export function PropostasClient({
       {/* Modal de detalhe / proposta */}
       {detalhe && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
               <div>
                 <div className="flex items-center gap-2">
@@ -266,22 +275,29 @@ export function PropostasClient({
                 )}
               </div>
             </div>
-            {isPresidente && detalhe.status === 'em_votacao' && (
+            {isPresidente && (
               <div className="px-6 py-4 border-t border-gray-100 flex gap-3 flex-shrink-0">
                 <button
+                  onClick={() => devolver(detalhe)}
+                  disabled={atualizando === detalhe.id || detalhe.status === 'em_analise'}
+                  className="flex-1 py-2.5 rounded-md text-sm font-semibold border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+                >
+                  Devolver à comissão
+                </button>
+                <button
                   onClick={() => rejeitar(detalhe)}
-                  disabled={atualizando === detalhe.id}
-                  className="flex-1 py-2.5 rounded-md text-sm font-semibold text-white bg-red-600 disabled:opacity-50"
+                  disabled={atualizando === detalhe.id || detalhe.status === 'rejeitado'}
+                  className="flex-1 py-2.5 rounded-md text-sm font-semibold text-white bg-red-600 disabled:opacity-40"
                 >
                   Rejeitar
                 </button>
                 <button
                   onClick={() => aprovar(detalhe)}
-                  disabled={atualizando === detalhe.id || !detalhe.reuniao_id}
-                  className="flex-1 py-2.5 rounded-md text-sm font-semibold text-white disabled:opacity-50"
+                  disabled={atualizando === detalhe.id || !detalhe.reuniao_id || detalhe.status === 'aprovado'}
+                  className="flex-1 py-2.5 rounded-md text-sm font-semibold text-white disabled:opacity-40"
                   style={{ background: '#16a34a' }}
                 >
-                  {atualizando === detalhe.id ? 'Processando...' : 'Aprovar e gerar resolução'}
+                  {atualizando === detalhe.id ? 'Processando...' : 'Aprovar'}
                 </button>
               </div>
             )}
