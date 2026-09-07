@@ -17,7 +17,7 @@ export default async function AtasPage() {
   ])
 
   const papel = perfilResult.data?.papel ?? null
-  const podeEnviar = papel === 'secretario_executivo' || papel === 'admin'
+  const podeAprovar = papel === 'secretario_executivo' || papel === 'admin'
 
   type AtaRow = { id: string; reuniao_id: string; numero_ata: string | null; status: string; updated_at: string; reuniao: { numero: string; tipo: string; data_inicio: string } | null }
   const atas = ((data ?? []) as unknown) as AtaRow[]
@@ -29,7 +29,7 @@ export default async function AtasPage() {
         <p className="text-gray-500 text-sm mt-1">{atas.length} ata(s) no sistema</p>
       </div>
 
-      <AtasClient atas={atas} podeEnviar={podeEnviar} />
+      <AtasClient atas={atas} podeAprovar={podeAprovar} />
     </div>
   )
 }

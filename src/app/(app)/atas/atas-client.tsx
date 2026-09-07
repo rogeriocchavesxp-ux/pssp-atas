@@ -21,19 +21,17 @@ type AtaRow = {
   reuniao: { numero: string; tipo: string; data_inicio: string } | null
 }
 
-export function AtasClient({ atas, podeEnviar }: { atas: AtaRow[]; podeEnviar: boolean }) {
-  const router = useRouter()
-  const supabase = createClient()
-  const [enviando, setEnviando] = useState<string | null>(null)
-
-  async function enviarParaAprovacao(ata: AtaRow) {
-    if (!window.confirm('Enviar a ata para aprovação?')) return
-    setEnviando(ata.id)
-    await supabase.from('atas').update({ status: 'em_aprovacao' }).eq('id', ata.id)
-    setEnviando(null)
-    router.refresh()
-  }
-
+function AtaTabela({
+  atas,
+  podeAprovar,
+  aprovando,
+  onAprovar,
+}: {
+  atas: AtaRow[]
+  podeAprovar: boolean
+  aprovando: string | null
+  onAprovar: (ata: AtaRow) => void
+}) {
   return (
     <div className="card p-0 overflow-hidden">
       <table className="table-pssp">
@@ -48,7 +46,7 @@ export function AtasClient({ atas, podeEnviar }: { atas: AtaRow[]; podeEnviar: b
         </thead>
         <tbody>
           {atas.length === 0 ? (
-            <tr><td colSpan={5} className="text-center text-gray-400 py-12">Nenhuma ata</td></tr>
+            <tr><td colSpan={5} className="text-center text-gray-400 py-10">Nenhuma ata</td></tr>
           ) : atas.map((ata) => {
             const reuniao = ata.reuniao
             const st = STATUS_MAP[ata.status] ?? { label: ata.status, cls: 'badge-gray' }
@@ -69,14 +67,14 @@ export function AtasClient({ atas, podeEnviar }: { atas: AtaRow[]; podeEnviar: b
                 <td><span className={`badge ${st.cls}`}>{st.label}</span></td>
                 <td style={{ paddingRight: 20 }}>
                   <div className="flex items-center gap-2 justify-end">
-                    {podeEnviar && ata.status === 'rascunho' && (
+                    {podeAprovar && ata.status === 'em_aprovacao' && (
                       <button
-                        onClick={() => enviarParaAprovacao(ata)}
-                        disabled={enviando === ata.id}
+                        onClick={() => onAprovar(ata)}
+                        disabled={aprovando === ata.id}
                         className="text-xs font-semibold px-3 py-1.5 rounded-md text-white disabled:opacity-60"
                         style={{ background: '#16a34a' }}
                       >
-                        {enviando === ata.id ? 'Enviando...' : 'Enviar para aprovação'}
+                        {aprovando === ata.id ? 'Aprovando...' : 'Aprovar'}
                       </button>
                     )}
                     <Link
@@ -84,7 +82,7 @@ export function AtasClient({ atas, podeEnviar }: { atas: AtaRow[]; podeEnviar: b
                       className="text-xs font-medium px-3 py-1.5 rounded-md border"
                       style={{ color: '#1B3A6B', borderColor: '#1B3A6B' }}
                     >
-                      Editar
+                      {ata.status === 'publicada' ? 'Ver' : 'Editar'}
                     </Link>
                   </div>
                 </td>
@@ -93,6 +91,50 @@ export function AtasClient({ atas, podeEnviar }: { atas: AtaRow[]; podeEnviar: b
           })}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+export function AtasClient({ atas, podeAprovar }: { atas: AtaRow[]; podeAprovar: boolean }) {
+  const router = useRouter()
+  const supabase = createClient()
+  const [aprovando, setAprovando] = useState<string | null>(null)
+
+  async function handleAprovar(ata: AtaRow) {
+    if (!window.confirm('Publicar esta ata? Esta ação não pode ser desfeita.')) return
+    setAprovando(ata.id)
+    await supabase.from('atas').update({ status: 'publicada' }).eq('id', ata.id)
+    setAprovando(null)
+    router.refresh()
+  }
+
+  const atasPendentes = atas.filter(a => a.status !== 'publicada')
+  const atasPublicadas = atas.filter(a => a.status === 'publicada')
+
+  return (
+    <div className="space-y-10">
+      {/* Atas em andamento */}
+      <div>
+        <AtaTabela
+          atas={atasPendentes}
+          podeAprovar={podeAprovar}
+          aprovando={aprovando}
+          onAprovar={handleAprovar}
+        />
+      </div>
+
+      {/* Atas publicadas */}
+      <div>
+        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-4">
+          Atas publicadas
+        </h2>
+        <AtaTabela
+          atas={atasPublicadas}
+          podeAprovar={false}
+          aprovando={null}
+          onAprovar={() => {}}
+        />
+      </div>
     </div>
   )
 }
