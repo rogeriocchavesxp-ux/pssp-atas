@@ -346,7 +346,7 @@ export function ComissoesClient({
                 className="text-sm font-semibold text-white px-4 py-1.5 rounded-md disabled:opacity-60"
                 style={{ background: '#1B3A6B' }}
               >
-                {savingProposta ? 'Finalizando...' : 'Finalizar parecer'}
+                {savingProposta ? 'Finalizando...' : 'Finalizar proposta'}
               </button>
             </div>
           </div>
