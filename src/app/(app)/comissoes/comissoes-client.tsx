@@ -61,6 +61,7 @@ export function ComissoesClient({
 
   // modal de proposta (split-screen)
   const [propostaDoc, setPropostaDoc] = useState<DocComissao | null>(null)
+  const [propostaPdfUrl, setPropostaPdfUrl] = useState<string | null>(null)
   const [propostaTexto, setPropostaTexto] = useState('')
   const [savingProposta, setSavingProposta] = useState(false)
 
@@ -141,9 +142,16 @@ export function ComissoesClient({
   }
 
   // ── Abrir modal de proposta ───────────────────────────────────
-  function abrirProposta(doc: DocComissao) {
+  async function abrirProposta(doc: DocComissao) {
     setPropostaDoc(doc)
+    setPropostaPdfUrl(null)
     setPropostaTexto(doc.proposta ?? 'O PSSP RESOLVE:')
+    if (doc.pdf_url) {
+      const { data } = await supabase.storage
+        .from('documentos')
+        .createSignedUrl(doc.pdf_url, 600)
+      setPropostaPdfUrl(data?.signedUrl ?? null)
+    }
   }
 
   // ── Salvar proposta ───────────────────────────────────────────
@@ -338,12 +346,16 @@ export function ComissoesClient({
                 )}
               </div>
               <div className="flex-1 overflow-y-auto">
-                {propostaDoc.pdf_url ? (
+                {propostaPdfUrl ? (
                   <iframe
-                    src={propostaDoc.pdf_url}
+                    src={propostaPdfUrl}
                     className="w-full h-full border-0"
                     title="Documento"
                   />
+                ) : propostaDoc.pdf_url && !propostaPdfUrl ? (
+                  <div className="p-6 text-sm text-gray-400 italic text-center mt-12">
+                    Carregando PDF...
+                  </div>
                 ) : propostaDoc.conteudo ? (
                   <div className="p-6 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-serif">
                     {propostaDoc.conteudo}
