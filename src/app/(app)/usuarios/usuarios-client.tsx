@@ -6,30 +6,33 @@ import { criarUsuario, atualizarPapel, atualizarIgreja, toggleAtivo } from './ac
 type IgrejaLite = Pick<Igreja, 'id' | 'nome' | 'sigla'>
 
 const PAPEIS: { value: Papel; label: string; desc: string }[] = [
-  { value: 'admin', label: 'Administrador', desc: 'Acesso total ao sistema' },
-  { value: 'moderador', label: 'Presidente (Moderador)', desc: 'Aprova ou rejeita propostas' },
-  { value: 'secretario', label: '1º / 2º Secretário', desc: 'Prepara documentos e ata' },
-  { value: 'secretario_executivo', label: 'Secretário Executivo', desc: 'Recebe e encaminha documentos' },
-  { value: 'pastor', label: 'Pastor', desc: 'Envia documentos e relatórios' },
-  { value: 'presbitero', label: 'Presbítero', desc: 'Envia documentos e relatórios' },
+  { value: 'admin',               label: 'Administrador',       desc: 'Acesso total ao sistema' },
+  { value: 'presidente',          label: 'Presidente',          desc: 'Aprova ou rejeita propostas no Plenário' },
+  { value: 'moderador',           label: 'Moderador',           desc: 'Conduz a sessão' },
+  { value: 'secretario',          label: '1º / 2º Secretário',  desc: 'Prepara documentos e ata' },
+  { value: 'secretario_executivo',label: 'Secretário Executivo',desc: 'Recebe e encaminha documentos' },
+  { value: 'pastor',              label: 'Pastor',              desc: 'Envia documentos e relatórios' },
+  { value: 'presbitero',          label: 'Presbítero',          desc: 'Envia documentos e relatórios' },
 ]
 
 const BADGE: Record<Papel, string> = {
-  admin: 'bg-red-100 text-red-700',
-  moderador: 'bg-purple-100 text-purple-700',
-  secretario: 'bg-blue-100 text-blue-700',
+  admin:                'bg-red-100 text-red-700',
+  presidente:           'bg-purple-100 text-purple-700',
+  moderador:            'bg-violet-100 text-violet-700',
+  secretario:           'bg-blue-100 text-blue-700',
   secretario_executivo: 'bg-indigo-100 text-indigo-700',
-  pastor: 'bg-green-100 text-green-700',
-  presbitero: 'bg-teal-100 text-teal-700',
+  pastor:               'bg-green-100 text-green-700',
+  presbitero:           'bg-teal-100 text-teal-700',
 }
 
 const LABEL: Record<Papel, string> = {
-  admin: 'Administrador',
-  moderador: 'Presidente',
-  secretario: '1º/2º Secretário',
+  admin:                'Administrador',
+  presidente:           'Presidente',
+  moderador:            'Moderador',
+  secretario:           '1º/2º Secretário',
   secretario_executivo: 'Sec. Executivo',
-  pastor: 'Pastor',
-  presbitero: 'Presbítero',
+  pastor:               'Pastor',
+  presbitero:           'Presbítero',
 }
 
 interface EditState {

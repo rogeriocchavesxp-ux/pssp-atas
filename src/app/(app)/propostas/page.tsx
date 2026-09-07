@@ -1,69 +1,43 @@
 import { createClient } from '@/lib/supabase/server'
-import Link from 'next/link'
+import { PropostasClient } from './propostas-client'
+
+export type DocProposta = {
+  id: string
+  numero: number
+  assunto: string
+  oriundo: string | null
+  proposta: string | null
+  status: string
+  comissao_id: string | null
+  reuniao_id: string | null
+  reuniao: { id: string; numero: string; data_inicio: string } | null
+  comissao: { numero: number; nome: string | null } | null
+  resolucao: { id: string; numero: number } | null
+}
 
 export default async function PropostasPage() {
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('documentos')
-    .select('*, reuniao:reunioes(numero, data_inicio)')
-    .order('created_at', { ascending: false })
-    .limit(50)
 
-  const docs = data ?? []
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const [{ data: docs }, perfilResult] = await Promise.all([
+    supabase
+      .from('documentos')
+      .select('id, numero, assunto, oriundo, proposta, status, comissao_id, reuniao_id, reuniao:reunioes(id, numero, data_inicio), comissao:comissoes(numero, nome), resolucao:resolucoes(id, numero)')
+      .not('comissao_id', 'is', null)
+      .order('numero', { ascending: false }),
+    user
+      ? supabase.from('perfis').select('papel').eq('id', user.id).single()
+      : Promise.resolve({ data: null, error: null }),
+  ])
+
+  const papel = perfilResult.data?.papel ?? null
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Propostas de Resolução</h1>
-        <p className="text-gray-500 text-sm mt-1">{docs.length} documento(s) no sistema</p>
-      </div>
-
-      <div className="card p-0 overflow-hidden">
-        <table className="table-pssp">
-          <thead>
-            <tr>
-              <th style={{ paddingLeft: 20, width: 60 }}>Doc.</th>
-              <th>Assunto</th>
-              <th>Oriundo</th>
-              <th>Reunião</th>
-              <th style={{ paddingRight: 20 }}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {docs.length === 0 ? (
-              <tr><td colSpan={5} className="text-center text-gray-400 py-12">Nenhuma proposta</td></tr>
-            ) : docs.map((d) => {
-              const reuniao = d.reuniao as { numero: string; data_inicio: string } | null
-              return (
-                <tr key={d.id}>
-                  <td style={{ paddingLeft: 20 }}>
-                    <span className="font-mono font-semibold text-gray-700">
-                      {String(d.numero).padStart(3, '0')}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="font-medium text-gray-900 text-sm leading-snug">{d.assunto}</div>
-                    {d.tipo && <div className="text-xs text-gray-400">{d.tipo}</div>}
-                  </td>
-                  <td className="text-gray-500 text-sm">{d.oriundo ?? '—'}</td>
-                  <td>
-                    {reuniao ? (
-                      <Link href={`/reunioes/${d.reuniao_id}`} className="text-sm" style={{ color: '#1B3A6B' }}>
-                        {reuniao.numero}
-                      </Link>
-                    ) : '—'}
-                  </td>
-                  <td style={{ paddingRight: 20 }}>
-                    <span className={`badge ${d.status === 'aprovado' ? 'badge-green' : d.status === 'rejeitado' ? 'badge-red' : 'badge-gray'}`}>
-                      {d.status}
-                    </span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <PropostasClient
+      docs={(docs ?? []) as unknown as DocProposta[]}
+      isPresidente={papel === 'presidente'}
+      userId={user?.id ?? null}
+    />
   )
 }

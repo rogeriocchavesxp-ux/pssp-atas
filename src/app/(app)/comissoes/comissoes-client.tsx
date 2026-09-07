@@ -164,13 +164,26 @@ export function ComissoesClient({
     }
   }
 
-  // ── Salvar proposta ───────────────────────────────────────────
+  // ── Salvar rascunho da proposta ───────────────────────────────
   async function salvarProposta() {
     if (!propostaDoc) return
     setSavingProposta(true)
     await supabase
       .from('documentos')
       .update({ proposta: propostaTexto })
+      .eq('id', propostaDoc.id)
+    setSavingProposta(false)
+    setPropostaDoc(null)
+    router.refresh()
+  }
+
+  // ── Finalizar parecer → em_votacao ────────────────────────────
+  async function finalizarParecer() {
+    if (!propostaDoc) return
+    setSavingProposta(true)
+    await supabase
+      .from('documentos')
+      .update({ proposta: propostaTexto, status: 'em_votacao' })
       .eq('id', propostaDoc.id)
     setSavingProposta(false)
     setPropostaDoc(null)
@@ -326,7 +339,7 @@ export function ComissoesClient({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setPropostaDoc(null)}
                 className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-md border border-gray-200"
@@ -336,10 +349,17 @@ export function ComissoesClient({
               <button
                 onClick={salvarProposta}
                 disabled={savingProposta}
+                className="text-sm font-medium text-gray-700 px-3 py-1.5 rounded-md border border-gray-300 hover:bg-gray-50 disabled:opacity-60"
+              >
+                {savingProposta ? 'Salvando...' : 'Salvar rascunho'}
+              </button>
+              <button
+                onClick={finalizarParecer}
+                disabled={savingProposta || !propostaTexto.trim()}
                 className="text-sm font-semibold text-white px-4 py-1.5 rounded-md disabled:opacity-60"
                 style={{ background: '#1B3A6B' }}
               >
-                {savingProposta ? 'Salvando...' : 'Salvar proposta'}
+                {savingProposta ? 'Finalizando...' : 'Finalizar parecer'}
               </button>
             </div>
           </div>
