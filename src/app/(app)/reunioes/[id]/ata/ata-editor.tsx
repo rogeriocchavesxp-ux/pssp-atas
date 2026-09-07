@@ -191,6 +191,8 @@ function AtaEditorInner({ reuniaoId, ata, reuniao }, ref) {
 
   function removerSessao(idx: number) {
     if (conteudo.sessoes_regulares.length <= 1) return
+    const temConteudo = (conteudo.sessoes_regulares[idx] ?? '').trim().length > 0
+    if (temConteudo && !window.confirm('Esta sessão tem conteúdo. Remover mesmo assim? Esta ação não pode ser desfeita.')) return
     setConteudo(prev => {
       const nova = prev.sessoes_regulares.filter((_, i) => i !== idx)
       return { ...prev, sessoes_regulares: nova }
