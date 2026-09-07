@@ -60,9 +60,10 @@ export function AtaPageClient({
     if (!ata) return
     if (!window.confirm('Enviar a ata para aprovação? Após enviar, o conteúdo não poderá ser editado.')) return
     setEnviando(true)
-    await supabase.from('atas').update({ status: 'em_aprovacao' }).eq('id', ata.id)
-    setStatusAtual('em_aprovacao')
+    const { error } = await supabase.from('atas').update({ status: 'em_aprovacao' }).eq('id', ata.id)
     setEnviando(false)
+    if (error) { alert('Erro ao enviar: ' + error.message); return }
+    setStatusAtual('em_aprovacao')
     router.refresh()
   }
 
