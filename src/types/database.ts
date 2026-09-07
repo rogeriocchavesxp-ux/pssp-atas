@@ -607,6 +607,15 @@ export interface AtaAprovacao {
   oficial?: Oficial
 }
 
+export interface ComissaoExecutiva {
+  id: string
+  ano: number
+  cargo: string
+  nome: string
+  oficial_id: string | null
+  created_at: string
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -622,6 +631,7 @@ export type Database = {
       resolucoes: { Row: Resolucao }
       atas: { Row: Ata }
       ata_aprovacoes: { Row: AtaAprovacao }
+      comissao_executiva: { Row: ComissaoExecutiva }
     }
   }
 }

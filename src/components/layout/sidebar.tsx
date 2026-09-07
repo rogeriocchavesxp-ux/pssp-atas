@@ -10,6 +10,7 @@ const NAV = [
     items: [
       { href: '/dashboard', icon: '⊞', label: 'Dashboard' },
       { href: '/reunioes', icon: '🏛️', label: 'Reuniões' },
+      { href: '/comissao-executiva', icon: '🏅', label: 'Comissão Executiva' },
     ],
   },
   {
