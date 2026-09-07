@@ -52,24 +52,6 @@ export default async function AtaPage({ params }: { params: Promise<{ id: string
         <span className="text-gray-700 font-medium">Ata</span>
       </div>
 
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Ata da Reunião</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {r.numero} · {new Date(r.data_inicio).toLocaleDateString('pt-BR')}
-            {ata ? ` · Status: ${ata.status}` : ' · Rascunho não iniciado'}
-          </p>
-        </div>
-        {ata && ata.status !== 'publicada' && (
-          <button
-            className="px-4 py-2 rounded-lg text-sm font-semibold text-white"
-            style={{ background: '#16a34a' }}
-          >
-            Enviar para aprovação
-          </button>
-        )}
-      </div>
-
       <AtaPageClient reuniaoId={id} ata={ata} reuniao={r} docs={docs} />
     </div>
   )

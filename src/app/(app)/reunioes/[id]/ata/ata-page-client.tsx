@@ -1,5 +1,7 @@
 'use client'
 import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 import { AtaEditor, type AtaEditorHandle } from './ata-editor'
 import type { Ata, Reuniao, AtaConteudo } from '@/types/database'
 import type { DocAta } from './page'
@@ -30,6 +32,12 @@ function inicializarInseridos(docs: DocAta[], ata: Ata | null): Set<string> {
   )
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  rascunho: 'Rascunho',
+  em_aprovacao: 'Em aprovação',
+  publicada: 'Publicada',
+}
+
 export function AtaPageClient({
   reuniaoId,
   ata,
@@ -41,8 +49,22 @@ export function AtaPageClient({
   reuniao: Reuniao
   docs: DocAta[]
 }) {
+  const router = useRouter()
+  const supabase = createClient()
   const ataRef = useRef<AtaEditorHandle>(null)
   const [inserted, setInserted] = useState<Set<string>>(() => inicializarInseridos(docs, ata))
+  const [enviando, setEnviando] = useState(false)
+  const [statusAtual, setStatusAtual] = useState(ata?.status ?? null)
+
+  async function enviarParaAprovacao() {
+    if (!ata) return
+    if (!window.confirm('Enviar a ata para aprovação? Após enviar, o conteúdo não poderá ser editado.')) return
+    setEnviando(true)
+    await supabase.from('atas').update({ status: 'em_aprovacao' }).eq('id', ata.id)
+    setStatusAtual('em_aprovacao')
+    setEnviando(false)
+    router.refresh()
+  }
 
   function handleInserir(doc: DocAta) {
     ataRef.current?.inserirNaAta(doc)
@@ -50,6 +72,38 @@ export function AtaPageClient({
   }
 
   return (
+    <div>
+      {/* Cabeçalho */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Ata da Reunião</h1>
+          <p className="text-gray-500 text-sm mt-1">
+            {reuniao.numero} · {new Date(reuniao.data_inicio).toLocaleDateString('pt-BR')}
+            {statusAtual ? ` · ${STATUS_LABEL[statusAtual] ?? statusAtual}` : ' · Rascunho não iniciado'}
+          </p>
+        </div>
+        {ata && statusAtual === 'rascunho' && (
+          <button
+            onClick={enviarParaAprovacao}
+            disabled={enviando}
+            className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
+            style={{ background: '#16a34a' }}
+          >
+            {enviando ? 'Enviando...' : 'Enviar para aprovação'}
+          </button>
+        )}
+        {statusAtual === 'em_aprovacao' && (
+          <span className="px-3 py-1.5 rounded-lg text-sm font-semibold text-amber-700 bg-amber-50 border border-amber-200">
+            Em aprovação
+          </span>
+        )}
+        {statusAtual === 'publicada' && (
+          <span className="px-3 py-1.5 rounded-lg text-sm font-semibold text-green-700 bg-green-50 border border-green-200">
+            Publicada
+          </span>
+        )}
+      </div>
+
     <div className="grid grid-cols-3 gap-6">
       {/* Editor */}
       <div className="col-span-2">
@@ -117,6 +171,7 @@ export function AtaPageClient({
           </div>
         )}
       </div>
+    </div>
     </div>
   )
 }
