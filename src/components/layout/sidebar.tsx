@@ -1,8 +1,9 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 const NAV = [
   {
@@ -50,6 +51,19 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const [nomeUsuario, setNomeUsuario] = useState<string>('')
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      // Tenta buscar nome do perfil; usa email como fallback
+      supabase.from('perfis').select('nome').eq('id', user.id).single()
+        .then(({ data }) => {
+          const nome = (data as { nome?: string } | null)?.nome
+          setNomeUsuario(nome || user.email?.split('@')[0] || '')
+        })
+    })
+  }, [])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -104,7 +118,15 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-3 py-4 border-t border-white/10">
+      <div className="px-3 py-4 border-t border-white/10 space-y-1">
+        {nomeUsuario && (
+          <div className="flex items-center gap-2.5 px-3 py-2">
+            <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+              {nomeUsuario[0].toUpperCase()}
+            </div>
+            <span className="text-white/70 text-sm truncate">{nomeUsuario}</span>
+          </div>
+        )}
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-white/50 hover:text-white hover:bg-white/8 transition-all"
