@@ -4,6 +4,18 @@ import Link from 'next/link'
 import { AtaEditor } from './ata-editor'
 import type { Reuniao, Ata } from '@/types/database'
 
+export type DocAta = {
+  id: string
+  numero: number
+  assunto: string
+  oriundo: string | null
+  conteudo: string | null
+  proposta: string | null
+  status: string
+  resolucao: { numero: number } | null
+  comissao: { numero: number; nome: string | null } | null
+}
+
 export default async function AtaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
@@ -11,7 +23,11 @@ export default async function AtaPage({ params }: { params: Promise<{ id: string
   const [{ data: reuniao }, { data: ataExistente }, { data: documentos }] = await Promise.all([
     supabase.from('reunioes').select('*').eq('id', id).single(),
     supabase.from('atas').select('*').eq('reuniao_id', id).single(),
-    supabase.from('documentos').select('numero, assunto, oriundo, status').eq('reuniao_id', id).order('numero'),
+    supabase
+      .from('documentos')
+      .select('id, numero, assunto, oriundo, conteudo, proposta, status, resolucao:resolucoes(numero), comissao:comissoes(numero, nome)')
+      .eq('reuniao_id', id)
+      .order('numero'),
   ])
 
   if (!reuniao) notFound()
@@ -51,32 +67,11 @@ export default async function AtaPage({ params }: { params: Promise<{ id: string
       <div className="grid grid-cols-3 gap-6">
         {/* Editor */}
         <div className="col-span-2">
-          <AtaEditor reuniaoId={id} ata={ata} reuniao={r} />
+          <AtaEditor reuniaoId={id} ata={ata} reuniao={r} docs={docs as unknown as DocAta[]} />
         </div>
 
-        {/* Painel lateral */}
+        {/* Aprovações */}
         <div className="space-y-4">
-          {/* Documentos aprovados */}
-          <div className="card">
-            <h3 className="font-semibold text-gray-900 mb-3 text-sm">Documentos da reunião</h3>
-            <div className="space-y-2">
-              {docs.length === 0 ? (
-                <p className="text-xs text-gray-400">Nenhum documento</p>
-              ) : docs.map((d: { numero: number; assunto: string; oriundo: string | null; status: string }) => (
-                <div key={d.numero} className="flex items-start gap-2 text-xs">
-                  <span className="font-mono font-semibold text-gray-500 w-7 flex-shrink-0 mt-0.5">
-                    {String(d.numero).padStart(3, '0')}
-                  </span>
-                  <div>
-                    <div className="text-gray-700 leading-snug">{d.assunto}</div>
-                    {d.oriundo && <div className="text-gray-400 mt-0.5">{d.oriundo}</div>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Aprovações */}
           {ata && (
             <div className="card">
               <h3 className="font-semibold text-gray-900 mb-3 text-sm">Aprovações da ata</h3>

@@ -3,6 +3,43 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Ata, Reuniao, AtaConteudo } from '@/types/database'
+import type { DocAta } from './page'
+
+function toRoman(n: number): string {
+  const vals = [1000,900,500,400,100,90,50,40,10,9,5,4,1]
+  const syms = ['M','CM','D','CD','C','XC','L','XL','X','IX','V','IV','I']
+  let r = ''
+  for (let i = 0; i < vals.length; i++) {
+    while (n >= vals[i]) { r += syms[i]; n -= vals[i] }
+  }
+  return r
+}
+
+function gerarTextoResolucao(doc: DocAta, reuniao: Reuniao): string {
+  const res = doc.resolucao
+  const com = doc.comissao
+  if (!res || !com) return ''
+
+  const ano = new Date(reuniao.data_inicio).getFullYear()
+  const codigoReuniao = `${reuniao.numero} ${ano}`
+  const nomeComissao = com.nome ?? 'Plenário'
+
+  const cabecalho = `COMISSÃO ${toRoman(com.numero)} - ${nomeComissao} - ${codigoReuniao} - DOC.${toRoman(res.numero)}`
+
+  const partes: string[] = [
+    `Quanto ao documento ${String(doc.numero).padStart(3, '0')}`,
+    doc.oriundo ? `- Oriundo do(a): ${doc.oriundo}` : '',
+    `- Ementa: ${doc.assunto}.`,
+  ].filter(Boolean)
+
+  if (doc.conteudo?.trim()) {
+    partes.push(`Considerando: ${doc.conteudo.trim()}`)
+  }
+
+  partes.push(`O PSSP RESOLVE: ${doc.proposta?.trim() ?? ''}`)
+
+  return `${cabecalho}\n${partes.join(' ')}`
+}
 
 const PLACEHOLDER_VERIFICACAO = `ATA DO ATO DE VERIFICAÇÃO DE PODERES DA [Nº] REUNIÃO [ORDINÁRIA/EXTRAORDINÁRIA] DO PRESBITÉRIO LESTE DE SÃO PAULO - PSSP
 
@@ -105,7 +142,7 @@ type Tab =
   | { kind: 'regular'; idx: number }
   | { kind: 'obs' }
 
-export function AtaEditor({ reuniaoId, ata, reuniao }: { reuniaoId: string; ata: Ata | null; reuniao: Reuniao }) {
+export function AtaEditor({ reuniaoId, ata, reuniao, docs = [] }: { reuniaoId: string; ata: Ata | null; reuniao: Reuniao; docs?: DocAta[] }) {
   const router = useRouter()
   const supabase = createClient()
   const [conteudo, setConteudo] = useState<AtaConteudo>(
@@ -157,6 +194,15 @@ export function AtaEditor({ reuniaoId, ata, reuniao }: { reuniaoId: string; ata:
     setSaving(false)
     setSaved(true)
     router.refresh()
+  }
+
+  function inserirNaAta(doc: DocAta) {
+    const texto = gerarTextoResolucao(doc, reuniao)
+    if (!texto) return
+    // Insere na sessão regular ativa, ou na primeira se não estiver numa regular
+    const idx = tab.kind === 'regular' ? tab.idx : 0
+    setRegular(idx, (conteudo.sessoes_regulares[idx] ?? '').trimEnd() + '\n\n' + texto + '\n')
+    if (tab.kind !== 'regular') setTab({ kind: 'regular', idx: 0 })
   }
 
   const total = conteudo.sessoes_regulares.length
@@ -320,6 +366,45 @@ export function AtaEditor({ reuniaoId, ata, reuniao }: { reuniaoId: string; ata:
           style={{ fontFamily: 'ui-monospace, "Courier New", monospace', fontSize: 13 }}
         />
       </div>
+
+      {/* Documentos da reunião — apenas na sessão regular */}
+      {tab.kind === 'regular' && docs.length > 0 && (
+        <div className="border-t border-gray-100 px-5 py-4">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+            Documentos da reunião
+          </p>
+          <div className="space-y-2">
+            {docs.map(d => {
+              const temResolucao = !!d.resolucao
+              const jaInserido = conteudo.sessoes_regulares.some(s => s.includes(`DOC.${toRoman(d.resolucao?.numero ?? 0)}`))
+              return (
+                <div key={d.id} className="flex items-start gap-3">
+                  <span className="font-mono text-xs font-semibold text-gray-400 w-7 flex-shrink-0 mt-0.5">
+                    {String(d.numero).padStart(3, '0')}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs text-gray-700 leading-snug truncate">{d.assunto}</div>
+                    {d.oriundo && <div className="text-xs text-gray-400">{d.oriundo}</div>}
+                  </div>
+                  {temResolucao ? (
+                    <button
+                      onClick={() => inserirNaAta(d)}
+                      disabled={jaInserido}
+                      className="text-xs px-2 py-1 rounded font-semibold flex-shrink-0 disabled:opacity-40 disabled:cursor-default"
+                      style={jaInserido ? { background: '#e5e7eb', color: '#9ca3af' } : { background: '#1B3A6B', color: '#fff' }}
+                      title={jaInserido ? 'Já inserido' : 'Inserir na ata'}
+                    >
+                      {jaInserido ? 'Inserido' : 'Inserir na Ata'}
+                    </button>
+                  ) : (
+                    <span className="text-xs text-gray-300 flex-shrink-0 italic">sem resolução</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
