@@ -447,6 +447,22 @@ export interface RelatorioAnual {
   igreja?: Igreja
 }
 
+export interface Candidato {
+  id: string
+  nome: string
+  email: string | null
+  telefone: string | null
+  data_candidatura: string | null
+  tutor_id: string | null
+  igreja_id: string | null
+  status: 'em_processo' | 'aprovado' | 'recusado' | 'desistiu'
+  observacoes: string | null
+  ativo: boolean
+  created_at: string
+  tutor?: Oficial
+  igreja?: Igreja
+}
+
 export interface Seminarista {
   id: string
   nome: string

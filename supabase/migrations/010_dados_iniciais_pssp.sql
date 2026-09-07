@@ -133,12 +133,24 @@ FROM (VALUES
   ('Rafael Garcia de Sá',                     'rafagsa@gmail.com',          'SPS',          2::int, 2025::int, 2028::int, 'cursando',        null),
   ('Lucas Johann Cruvinel Carvalho',          'johanncruvinel@gmail.com',   'JMC',          3::int, 2024::int, 2027::int, 'cursando',        null),
   ('Sidney Faria dos Reis Júnior',            null::text,                   'SPS',          4::int, 2023::int, 2026::int, 'cursando',        'IPPenha'),
-  ('Gladston Lucas Oliveira',                 null::text,                   'Andrew Jumper (EAD)', null::int, 2025::int, null::int, 'cursando', 'IPPenha'),
   ('Éfferson Soares Luz',                     null::text,                   'JMC',          null::int, null::int, 2024::int, 'licenciado',    null::text),
   ('Paulo Andrés Erben Castro',               'erbenpaulo@gmail.com',       'JMC',          null::int, 2022::int, 2025::int, 'aprovado',      'IPPenha'),
   ('Gabriel Bastos Ricci Justino',            null::text,                   'SPS',          null::int, null::int, 2025::int, 'aprovado',      null::text)
 ) AS v(nome, email, seminario, curso_ano, ano_inicio, ano_formacao, status, sigla)
 WHERE NOT EXISTS (SELECT 1 FROM seminaristas WHERE seminaristas.nome = v.nome);
+
+-- ── CANDIDATOS ───────────────────────────────────────────────
+
+INSERT INTO candidatos (nome, data_candidatura, tutor_id, igreja_id, status, observacoes, ativo)
+SELECT
+  'Gladston Lucas Oliveira',
+  '2026-01-30',
+  (SELECT id FROM oficiais WHERE nome = 'Rogério de Castro Chaves' LIMIT 1),
+  (SELECT id FROM igrejas WHERE sigla = 'IPPenha' LIMIT 1),
+  'em_processo',
+  'Missionário há 20 anos na Espanha (Salamanca). Pós-graduação EAD no Seminário Andrew Jumper. Aprovado como candidato na 37ª RO (jan/2026).',
+  true
+WHERE NOT EXISTS (SELECT 1 FROM candidatos WHERE nome = 'Gladston Lucas Oliveira');
 
 -- ── COMISSÃO EXECUTIVA (histórico) ───────────────────────────
 

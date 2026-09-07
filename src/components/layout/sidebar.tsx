@@ -33,6 +33,7 @@ const NAV = [
     items: [
       { href: '/oficiais', icon: '👤', label: 'Oficiais' },
       { href: '/seminaristas', icon: '🎓', label: 'Seminaristas' },
+      { href: '/candidatos', icon: '📌', label: 'Candidatos' },
       { href: '/igrejas', icon: '⛪', label: 'Igrejas' },
       { href: '/comissoes', icon: '👥', label: 'Comissões' },
     ],
