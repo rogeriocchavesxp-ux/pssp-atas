@@ -414,7 +414,7 @@ export function ComissoesClient({
                 <h2 className="font-semibold text-gray-900">Comissão {toRoman(gerenciando.numero)}{gerenciando.nome ? ` — ${gerenciando.nome}` : ''}</h2>
                 {gerenciando.nome && <p className="text-xs text-gray-400 mt-0.5">{gerenciando.nome}</p>}
               </div>
-              <button onClick={() => { setGerenciando(null); setEditandoDoc(null) }} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+              <button onClick={() => setGerenciando(null)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
             </div>
 
             {/* Tabs */}
