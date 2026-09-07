@@ -55,9 +55,14 @@ export function ComissoesClient({
   const [savingMembro, setSavingMembro] = useState(false)
   const [erroMembro, setErroMembro] = useState('')
 
-  // edição de documento
+  // edição de parecer
   const [editandoDoc, setEditandoDoc] = useState<{ id: string; conteudo: string } | null>(null)
   const [savingDoc, setSavingDoc] = useState(false)
+
+  // modal de proposta (split-screen)
+  const [propostaDoc, setPropostaDoc] = useState<DocComissao | null>(null)
+  const [propostaTexto, setPropostaTexto] = useState('')
+  const [savingProposta, setSavingProposta] = useState(false)
 
   function set(f: string, v: string) { setForm(p => ({ ...p, [f]: v })) }
 
@@ -132,6 +137,25 @@ export function ComissoesClient({
     await supabase.from('documentos').update({ conteudo: editandoDoc.conteudo }).eq('id', editandoDoc.id)
     setSavingDoc(false)
     setEditandoDoc(null)
+    router.refresh()
+  }
+
+  // ── Abrir modal de proposta ───────────────────────────────────
+  function abrirProposta(doc: DocComissao) {
+    setPropostaDoc(doc)
+    setPropostaTexto(doc.proposta ?? 'O PSSP RESOLVE:')
+  }
+
+  // ── Salvar proposta ───────────────────────────────────────────
+  async function salvarProposta() {
+    if (!propostaDoc) return
+    setSavingProposta(true)
+    await supabase
+      .from('documentos')
+      .update({ proposta: propostaTexto })
+      .eq('id', propostaDoc.id)
+    setSavingProposta(false)
+    setPropostaDoc(null)
     router.refresh()
   }
 
@@ -263,6 +287,92 @@ export function ComissoesClient({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Proposta (split-screen) */}
+      {propostaDoc && (
+        <div className="fixed inset-0 z-[60] flex flex-col bg-white">
+          {/* Barra superior */}
+          <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-xs font-semibold text-gray-400">
+                Doc. {String(propostaDoc.numero).padStart(3, '0')}
+              </span>
+              <span className="text-sm font-semibold text-gray-900 truncate max-w-md">
+                {propostaDoc.assunto}
+              </span>
+              {propostaDoc.reuniao && (
+                <span className="text-xs text-gray-400">
+                  · {propostaDoc.reuniao.numero}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setPropostaDoc(null)}
+                className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-md border border-gray-200"
+              >
+                Fechar
+              </button>
+              <button
+                onClick={salvarProposta}
+                disabled={savingProposta}
+                className="text-sm font-semibold text-white px-4 py-1.5 rounded-md disabled:opacity-60"
+                style={{ background: '#1B3A6B' }}
+              >
+                {savingProposta ? 'Salvando...' : 'Salvar proposta'}
+              </button>
+            </div>
+          </div>
+
+          {/* Painéis lado a lado */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Esquerdo: documento */}
+            <div className="w-1/2 border-r border-gray-200 flex flex-col overflow-hidden">
+              <div className="px-5 py-2.5 border-b border-gray-100 bg-gray-50 flex-shrink-0">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Documento</span>
+                {propostaDoc.oriundo && (
+                  <span className="text-xs text-gray-400 ml-2">· {propostaDoc.oriundo}</span>
+                )}
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {propostaDoc.pdf_url ? (
+                  <iframe
+                    src={propostaDoc.pdf_url}
+                    className="w-full h-full border-0"
+                    title="Documento"
+                  />
+                ) : propostaDoc.conteudo ? (
+                  <div className="p-6 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-serif">
+                    {propostaDoc.conteudo}
+                  </div>
+                ) : (
+                  <div className="p-6 text-sm text-gray-400 italic text-center mt-12">
+                    Nenhum conteúdo disponível para este documento.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Direito: proposta */}
+            <div className="w-1/2 flex flex-col overflow-hidden">
+              <div className="px-5 py-2.5 border-b border-gray-100 bg-gray-50 flex-shrink-0 flex items-center justify-between">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Proposta</span>
+                <span className="text-xs text-gray-400">Comissão {gerenciando?.numero}</span>
+              </div>
+              <div className="flex-1 p-5 flex flex-col">
+                <textarea
+                  className="flex-1 w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  style={{ fontFamily: 'Georgia, serif' }}
+                  value={propostaTexto}
+                  onChange={e => setPropostaTexto(e.target.value)}
+                  placeholder="O PSSP RESOLVE:"
+                  autoFocus
+                />
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -406,12 +516,21 @@ export function ComissoesClient({
                               <div className="flex items-center gap-2 flex-shrink-0">
                                 <span className={`badge ${st.cls}`}>{st.label}</span>
                                 {podeEditarDoc && !editando && (
-                                  <button
-                                    onClick={() => setEditandoDoc({ id: doc.id, conteudo: doc.conteudo ?? '' })}
-                                    className="text-xs px-2 py-1 rounded border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
-                                  >
-                                    Editar
-                                  </button>
+                                  <>
+                                    <button
+                                      onClick={() => setEditandoDoc({ id: doc.id, conteudo: doc.conteudo ?? '' })}
+                                      className="text-xs px-2 py-1 rounded border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                                    >
+                                      Parecer
+                                    </button>
+                                    <button
+                                      onClick={() => abrirProposta(doc)}
+                                      className="text-xs px-2 py-1 rounded text-white font-semibold transition-colors"
+                                      style={{ background: '#1B3A6B' }}
+                                    >
+                                      {doc.proposta ? 'Ver proposta' : 'Lançar proposta'}
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             </div>

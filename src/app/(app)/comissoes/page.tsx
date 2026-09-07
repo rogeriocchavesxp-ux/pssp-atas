@@ -20,7 +20,7 @@ export default async function ComissoesPage() {
     supabase.from('oficiais').select('id, nome, tipo').eq('ativo', true).order('nome'),
     supabase
       .from('documentos')
-      .select('id, numero, assunto, oriundo, conteudo, status, comissao_id, reuniao:reunioes(numero, data_inicio)')
+      .select('id, numero, assunto, oriundo, conteudo, proposta, pdf_url, status, comissao_id, reuniao_id, reuniao:reunioes(numero, data_inicio)')
       .not('comissao_id', 'is', null)
       .order('numero'),
     user
@@ -45,7 +45,10 @@ export type DocComissao = {
   assunto: string
   oriundo: string | null
   conteudo: string | null
+  proposta: string | null
+  pdf_url: string | null
   status: string
   comissao_id: string
+  reuniao_id: string
   reuniao: { numero: string; data_inicio: string } | null
 }
