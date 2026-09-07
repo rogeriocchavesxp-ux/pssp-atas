@@ -497,6 +497,7 @@ export interface Igreja {
   cidade: string | null
   bairro: string | null
   pastor_id: string | null
+  igreja_mae_id: string | null
   tipo: 'sede' | 'congregacao' | 'campo' | 'missao'
   ativa: boolean
   created_at: string
