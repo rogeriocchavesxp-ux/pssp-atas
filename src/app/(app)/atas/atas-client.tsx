@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { AtaViewer } from './ata-viewer'
 
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
   rascunho:     { label: 'Rascunho',      cls: 'badge-gray' },
@@ -77,13 +78,23 @@ function AtaTabela({
                         {aprovando === ata.id ? 'Aprovando...' : 'Aprovar'}
                       </button>
                     )}
-                    <Link
-                      href={`/reunioes/${ata.reuniao_id}/ata`}
-                      className="text-xs font-medium px-3 py-1.5 rounded-md border"
-                      style={{ color: '#1B3A6B', borderColor: '#1B3A6B' }}
-                    >
-                      {ata.status === 'publicada' ? 'Ver' : 'Editar'}
-                    </Link>
+                    {ata.status === 'publicada' ? (
+                      <button
+                        onClick={() => abrirViewer(ata)}
+                        className="text-xs font-medium px-3 py-1.5 rounded-md border"
+                        style={{ color: '#1B3A6B', borderColor: '#1B3A6B' }}
+                      >
+                        Ver
+                      </button>
+                    ) : (
+                      <Link
+                        href={`/reunioes/${ata.reuniao_id}/ata`}
+                        className="text-xs font-medium px-3 py-1.5 rounded-md border"
+                        style={{ color: '#1B3A6B', borderColor: '#1B3A6B' }}
+                      >
+                        Editar
+                      </Link>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -95,10 +106,24 @@ function AtaTabela({
   )
 }
 
+interface AtaConteudo {
+  verificacao_poderes: string
+  sessao_preparatoria: string
+  sessoes_regulares: string[]
+  observacoes?: string
+}
+
 export function AtasClient({ atas, podeAprovar }: { atas: AtaRow[]; podeAprovar: boolean }) {
   const router = useRouter()
   const supabase = createClient()
   const [aprovando, setAprovando] = useState<string | null>(null)
+  const [viewer, setViewer] = useState<{ conteudo: AtaConteudo; reuniao: AtaRow['reuniao'] } | null>(null)
+
+  async function abrirViewer(ata: AtaRow) {
+    const { data } = await supabase.from('atas').select('conteudo').eq('id', ata.id).single()
+    if (!data) return
+    setViewer({ conteudo: data.conteudo as unknown as AtaConteudo, reuniao: ata.reuniao })
+  }
 
   async function handleAprovar(ata: AtaRow) {
     if (!window.confirm('Publicar esta ata? Esta ação não pode ser desfeita.')) return
@@ -112,6 +137,14 @@ export function AtasClient({ atas, podeAprovar }: { atas: AtaRow[]; podeAprovar:
   const atasPublicadas = atas.filter(a => a.status === 'publicada')
 
   return (
+    <>
+    {viewer && (
+      <AtaViewer
+        conteudo={viewer.conteudo}
+        reuniao={viewer.reuniao}
+        onClose={() => setViewer(null)}
+      />
+    )}
     <div className="space-y-10">
       {/* Atas em andamento */}
       <div>
@@ -136,5 +169,6 @@ export function AtasClient({ atas, podeAprovar }: { atas: AtaRow[]; podeAprovar:
         />
       </div>
     </div>
+    </>
   )
 }
