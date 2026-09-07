@@ -33,9 +33,17 @@ export default async function PropostasPage() {
 
   const papel = perfilResult.data?.papel ?? null
 
+  // Supabase retorna resolucao/comissao/reuniao como array em joins 1-para-muitos; normaliza
+  const docsNormalizados: DocProposta[] = (docs ?? []).map((d: Record<string, unknown>) => ({
+    ...(d as Omit<DocProposta, 'resolucao' | 'comissao' | 'reuniao'>),
+    resolucao: Array.isArray(d.resolucao) ? (d.resolucao[0] ?? null) : (d.resolucao as DocProposta['resolucao']),
+    comissao: Array.isArray(d.comissao) ? (d.comissao[0] ?? null) : (d.comissao as DocProposta['comissao']),
+    reuniao: Array.isArray(d.reuniao) ? (d.reuniao[0] ?? null) : (d.reuniao as DocProposta['reuniao']),
+  }))
+
   return (
     <PropostasClient
-      docs={(docs ?? []) as unknown as DocProposta[]}
+      docs={docsNormalizados}
       isPresidente={papel === 'presidente' || papel === 'admin'}
       userId={user?.id ?? null}
     />

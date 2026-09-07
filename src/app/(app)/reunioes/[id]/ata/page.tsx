@@ -34,7 +34,13 @@ export default async function AtaPage({ params }: { params: Promise<{ id: string
 
   const r = reuniao as Reuniao
   const ata = ataExistente as Ata | null
-  const docs = documentos ?? []
+
+  // Supabase retorna resolucao como array (relação 1-para-muitos); normaliza para objeto único
+  const docs: DocAta[] = (documentos ?? []).map((d: Record<string, unknown>) => ({
+    ...(d as Omit<DocAta, 'resolucao' | 'comissao'>),
+    resolucao: Array.isArray(d.resolucao) ? (d.resolucao[0] ?? null) : (d.resolucao as DocAta['resolucao']),
+    comissao: Array.isArray(d.comissao) ? (d.comissao[0] ?? null) : (d.comissao as DocAta['comissao']),
+  }))
 
   return (
     <div className="p-8">
@@ -64,12 +70,7 @@ export default async function AtaPage({ params }: { params: Promise<{ id: string
         )}
       </div>
 
-      <AtaPageClient
-        reuniaoId={id}
-        ata={ata}
-        reuniao={r}
-        docs={docs as unknown as DocAta[]}
-      />
+      <AtaPageClient reuniaoId={id} ata={ata} reuniao={r} docs={docs} />
     </div>
   )
 }
