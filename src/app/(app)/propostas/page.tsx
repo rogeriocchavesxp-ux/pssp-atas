@@ -15,17 +15,25 @@ export type DocProposta = {
   resolucao: { id: string; numero: number } | null
 }
 
-export default async function PropostasPage() {
+export default async function PropostasPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const supabase = await createClient()
+  const params = await searchParams
+  const reuniaoId = params.reuniao ?? null
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  let docsQuery = supabase
+    .from('documentos')
+    .select('id, numero, assunto, oriundo, proposta, status, comissao_id, reuniao_id, reuniao:reunioes(id, numero, data_inicio), comissao:comissoes(numero, nome), resolucao:resolucoes(id, numero)')
+    .not('comissao_id', 'is', null)
+    .order('numero', { ascending: false })
+
+  if (reuniaoId) {
+    docsQuery = docsQuery.eq('reuniao_id', reuniaoId)
+  }
+
   const [{ data: docs }, perfilResult] = await Promise.all([
-    supabase
-      .from('documentos')
-      .select('id, numero, assunto, oriundo, proposta, status, comissao_id, reuniao_id, reuniao:reunioes(id, numero, data_inicio), comissao:comissoes(numero, nome), resolucao:resolucoes(id, numero)')
-      .not('comissao_id', 'is', null)
-      .order('numero', { ascending: false }),
+    docsQuery,
     user
       ? supabase.from('perfis').select('papel').eq('id', user.id).single()
       : Promise.resolve({ data: null, error: null }),

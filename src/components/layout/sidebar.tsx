@@ -5,46 +5,35 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-const NAV = [
-  {
-    label: 'Principal',
-    items: [
-      { href: '/dashboard', icon: '⊞', label: 'Dashboard' },
-      { href: '/reunioes', icon: '🏛️', label: 'Reuniões' },
-      { href: '/comissao-executiva', icon: '🏅', label: 'Comissão Executiva' },
-    ],
-  },
-  {
-    label: 'Mesa da Reunião',
-    items: [
-      { href: '/ementa', icon: '📋', label: 'Ementário' },
-      { href: '/propostas', icon: '📄', label: 'Propostas' },
-      { href: '/resolucoes', icon: '✅', label: 'Resoluções' },
-      { href: '/atas', icon: '📝', label: 'Atas' },
-    ],
-  },
-  {
-    label: 'Relatórios',
-    items: [
-      { href: '/relatorios', icon: '📊', label: 'Relatórios Anuais' },
-    ],
-  },
-  {
-    label: 'Cadastros',
-    items: [
-      { href: '/oficiais', icon: '👤', label: 'Oficiais' },
-      { href: '/seminaristas', icon: '🎓', label: 'Seminaristas' },
-      { href: '/candidatos', icon: '📌', label: 'Candidatos' },
-      { href: '/igrejas', icon: '⛪', label: 'Igrejas' },
-      { href: '/comissoes', icon: '👥', label: 'Comissões' },
-    ],
-  },
-  {
-    label: 'Administração',
-    items: [
-      { href: '/usuarios', icon: '🔐', label: 'Usuários e Permissões' },
-    ],
-  },
+const NAV_PRINCIPAL = [
+  { href: '/dashboard', icon: '⊞', label: 'Dashboard' },
+  { href: '/reunioes', icon: '🏛️', label: 'Reuniões' },
+  { href: '/comissao-executiva', icon: '🏅', label: 'Comissão Executiva' },
+]
+
+const NAV_MESA_GLOBAL = [
+  { href: '/ementa', icon: '📋', label: 'Ementário' },
+  { href: '/propostas', icon: '📄', label: 'Propostas' },
+  { href: '/resolucoes', icon: '✅', label: 'Resoluções' },
+  { href: '/atas', icon: '📝', label: 'Atas' },
+]
+
+const NAV_RELATORIOS = [
+  { href: '/relatorios', icon: '📊', label: 'Relatórios Anuais' },
+  { href: '/relatorios/ministeriais', icon: '📋', label: 'Relatórios de Ministro' },
+  { href: '/relatorios/igrejas', icon: '⛪', label: 'Relatórios das Igrejas' },
+]
+
+const NAV_CADASTROS = [
+  { href: '/oficiais', icon: '👤', label: 'Oficiais' },
+  { href: '/seminaristas', icon: '🎓', label: 'Seminaristas' },
+  { href: '/candidatos', icon: '📌', label: 'Candidatos' },
+  { href: '/igrejas', icon: '⛪', label: 'Igrejas' },
+  { href: '/comissoes', icon: '👥', label: 'Comissões' },
+]
+
+const NAV_ADMIN = [
+  { href: '/usuarios', icon: '🔐', label: 'Usuários e Permissões' },
 ]
 
 export function Sidebar() {
@@ -52,11 +41,31 @@ export function Sidebar() {
   const router = useRouter()
   const supabase = createClient()
   const [nomeUsuario, setNomeUsuario] = useState<string>('')
+  const [reuniaoNumero, setReuniaoNumero] = useState<string | null>(null)
+
+  const reuniaoMatch = pathname.match(/^\/reunioes\/([^/]+)/)
+  const reuniaoId = reuniaoMatch?.[1] && reuniaoMatch[1] !== 'nova' ? reuniaoMatch[1] : undefined
+
+  const mesaItems = reuniaoId ? [
+    { href: `/reunioes/${reuniaoId}/ementa`, icon: '📋', label: 'Ementário' },
+    { href: `/propostas?reuniao=${reuniaoId}`, icon: '📄', label: 'Propostas' },
+    { href: `/resolucoes?reuniao=${reuniaoId}`, icon: '✅', label: 'Resoluções' },
+    { href: `/reunioes/${reuniaoId}/ata`, icon: '📝', label: 'Atas' },
+  ] : NAV_MESA_GLOBAL
+
+  const mesaLabel = reuniaoId && reuniaoNumero ? `Mesa — ${reuniaoNumero}` : 'Mesa da Reunião'
+
+  const NAV = [
+    { label: 'Principal', items: NAV_PRINCIPAL },
+    { label: mesaLabel, items: mesaItems },
+    { label: 'Relatórios', items: NAV_RELATORIOS },
+    { label: 'Cadastros', items: NAV_CADASTROS },
+    { label: 'Administração', items: NAV_ADMIN },
+  ]
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
-      // Tenta buscar nome do perfil; usa email como fallback
       supabase.from('perfis').select('nome').eq('id', user.id).single()
         .then(({ data }) => {
           const nome = (data as { nome?: string } | null)?.nome
@@ -64,6 +73,12 @@ export function Sidebar() {
         })
     })
   }, [])
+
+  useEffect(() => {
+    if (!reuniaoId) { setReuniaoNumero(null); return }
+    supabase.from('reunioes').select('numero').eq('id', reuniaoId).single()
+      .then(({ data }) => setReuniaoNumero((data as { numero?: string } | null)?.numero ?? null))
+  }, [reuniaoId])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -97,7 +112,8 @@ export function Sidebar() {
               {group.label}
             </div>
             {group.items.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(item.href + '/')
+              const hrefPath = item.href.split('?')[0]
+              const active = pathname === hrefPath || pathname.startsWith(hrefPath + '/')
               return (
                 <Link
                   key={item.href}

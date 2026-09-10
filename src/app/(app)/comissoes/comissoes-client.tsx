@@ -69,8 +69,31 @@ export function ComissoesClient({
   // modal de proposta (split-screen)
   const [propostaDoc, setPropostaDoc] = useState<DocComissao | null>(null)
   const [propostaPdfUrl, setPropostaPdfUrl] = useState<string | null>(null)
-  const [propostaTexto, setPropostaTexto] = useState('')
+  const [propostaConsiderando, setPropostaConsiderando] = useState('')
+  const [propostaResolve, setPropostaResolve] = useState('')
   const [savingProposta, setSavingProposta] = useState(false)
+
+  const SEPARADOR = '\n===RESOLVE===\n'
+
+  function parseProposta(raw: string | null) {
+    const texto = raw ?? ''
+    const idx = texto.indexOf('===RESOLVE===')
+    if (idx !== -1) {
+      return {
+        considerando: texto.slice(0, idx).replace(/^\n+|\n+$/g, ''),
+        resolve: texto.slice(idx + '===RESOLVE==='.length).replace(/^\n+|\n+$/g, ''),
+      }
+    }
+    // formato legado: tudo vai para resolve
+    return { considerando: '', resolve: texto.replace(/^O PSSP[^:]*:\s*/i, '').trim() }
+  }
+
+  function montarProposta() {
+    const c = propostaConsiderando.trim()
+    const r = propostaResolve.trim()
+    if (!c) return r
+    return `${c}${SEPARADOR}${r}`
+  }
 
   function set(f: string, v: string) { setForm(p => ({ ...p, [f]: v })) }
 
@@ -142,7 +165,9 @@ export function ComissoesClient({
   async function abrirProposta(doc: DocComissao) {
     setPropostaDoc(doc)
     setPropostaPdfUrl(null)
-    setPropostaTexto(doc.proposta ?? 'O PSSP RESOLVE:')
+    const { considerando, resolve } = parseProposta(doc.proposta)
+    setPropostaConsiderando(considerando)
+    setPropostaResolve(resolve)
     if (doc.pdf_url) {
       const { data } = await supabase.storage
         .from('documentos')
@@ -157,7 +182,7 @@ export function ComissoesClient({
     setSavingProposta(true)
     await supabase
       .from('documentos')
-      .update({ proposta: propostaTexto })
+      .update({ proposta: montarProposta() })
       .eq('id', propostaDoc.id)
     setSavingProposta(false)
     setPropostaDoc(null)
@@ -167,10 +192,11 @@ export function ComissoesClient({
   // ── Finalizar parecer → em_votacao ────────────────────────────
   async function finalizarParecer() {
     if (!propostaDoc) return
+    if (!window.confirm('Finalizar proposta? Após o envio não será mais possível editar.')) return
     setSavingProposta(true)
     await supabase
       .from('documentos')
-      .update({ proposta: propostaTexto, status: 'em_votacao' })
+      .update({ proposta: montarProposta(), status: 'em_votacao' })
       .eq('id', propostaDoc.id)
     setSavingProposta(false)
     setPropostaDoc(null)
@@ -341,7 +367,7 @@ export function ComissoesClient({
               </button>
               <button
                 onClick={finalizarParecer}
-                disabled={savingProposta || !propostaTexto.trim()}
+                disabled={savingProposta || !propostaResolve.trim()}
                 className="text-sm font-semibold text-white px-4 py-1.5 rounded-md disabled:opacity-60"
                 style={{ background: '#1B3A6B' }}
               >
@@ -389,15 +415,34 @@ export function ComissoesClient({
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Proposta</span>
                 <span className="text-xs text-gray-400">Comissão {gerenciando ? toRoman(gerenciando.numero) : ''}</span>
               </div>
-              <div className="flex-1 p-5 flex flex-col">
-                <textarea
-                  className="flex-1 w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  style={{ fontFamily: 'Georgia, serif' }}
-                  value={propostaTexto}
-                  onChange={e => setPropostaTexto(e.target.value)}
-                  placeholder="O PSSP RESOLVE:"
-                  autoFocus
-                />
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Considerando */}
+                <div className="flex-1 flex flex-col p-5 border-b border-gray-200">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">
+                    Considerando:
+                  </label>
+                  <textarea
+                    className="flex-1 w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    style={{ fontFamily: 'Georgia, serif' }}
+                    value={propostaConsiderando}
+                    onChange={e => setPropostaConsiderando(e.target.value)}
+                    placeholder="Fundamentos e considerações da comissão..."
+                    autoFocus
+                  />
+                </div>
+                {/* O PSSP Resolve */}
+                <div className="flex-1 flex flex-col p-5">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">
+                    O PSSP Resolve:
+                  </label>
+                  <textarea
+                    className="flex-1 w-full border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    style={{ fontFamily: 'Georgia, serif' }}
+                    value={propostaResolve}
+                    onChange={e => setPropostaResolve(e.target.value)}
+                    placeholder="Texto da resolução..."
+                  />
+                </div>
               </div>
             </div>
           </div>

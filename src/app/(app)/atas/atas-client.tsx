@@ -5,6 +5,14 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { AtaViewer } from './ata-viewer'
 
+function nomeCompleto(numero: string): string {
+  return numero
+    .replace(/\bRO\b/g, 'Reunião Ordinária')
+    .replace(/\bRE\b/g, 'Reunião Extraordinária')
+    .replace(/\bRS\b/g, 'Reunião Solene')
+    .replace(/\bRA\b/g, 'Reunião Administrativa')
+}
+
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
   rascunho:     { label: 'Rascunho',      cls: 'badge-gray' },
   em_aprovacao: { label: 'Aguardando Aprovação', cls: 'badge-yellow' },
@@ -27,6 +35,7 @@ function AtaTabela({
   podeAprovar,
   aprovando,
   onAprovar,
+  onVer,
 }: {
   atas: AtaRow[]
   podeAprovar: boolean
@@ -40,7 +49,6 @@ function AtaTabela({
         <thead>
           <tr>
             <th style={{ paddingLeft: 20 }}>Reunião</th>
-            <th>Nº Ata</th>
             <th>Última atualização</th>
             <th>Status</th>
             <th style={{ paddingRight: 20 }}></th>
@@ -48,21 +56,20 @@ function AtaTabela({
         </thead>
         <tbody>
           {atas.length === 0 ? (
-            <tr><td colSpan={5} className="text-center text-gray-400 py-10">Nenhuma ata</td></tr>
+            <tr><td colSpan={4} className="text-center text-gray-400 py-10">Nenhuma ata</td></tr>
           ) : atas.map((ata) => {
             const reuniao = ata.reuniao
             const st = STATUS_MAP[ata.status] ?? { label: ata.status, cls: 'badge-gray' }
             return (
               <tr key={ata.id}>
                 <td style={{ paddingLeft: 20 }}>
-                  <div className="font-medium text-gray-900">{reuniao?.numero ?? '—'}</div>
+                  <div className="font-medium text-gray-900">{reuniao ? nomeCompleto(reuniao.numero) : '—'}</div>
                   {reuniao && (
                     <div className="text-xs text-gray-400">
                       {new Date(reuniao.data_inicio).toLocaleDateString('pt-BR')}
                     </div>
                   )}
                 </td>
-                <td className="text-gray-600">{ata.numero_ata ?? '—'}</td>
                 <td className="text-gray-500 text-sm">
                   {new Date(ata.updated_at).toLocaleString('pt-BR')}
                 </td>
@@ -79,19 +86,18 @@ function AtaTabela({
                         {aprovando === ata.id ? 'Aprovando...' : 'Aprovar'}
                       </button>
                     )}
-                    {ata.status === 'publicada' ? (
-                      <button
-                        onClick={() => onVer(ata)}
-                        className="text-xs font-medium px-3 py-1.5 rounded-md border"
-                        style={{ color: '#1B3A6B', borderColor: '#1B3A6B' }}
-                      >
-                        Ver
-                      </button>
-                    ) : (
+                    <button
+                      onClick={() => onVer(ata)}
+                      className="text-xs font-medium px-3 py-1.5 rounded-md border"
+                      style={{ color: '#1B3A6B', borderColor: '#1B3A6B' }}
+                    >
+                      Visualizar
+                    </button>
+                    {ata.status !== 'publicada' && (
                       <Link
                         href={`/reunioes/${ata.reuniao_id}/ata`}
                         className="text-xs font-medium px-3 py-1.5 rounded-md border"
-                        style={{ color: '#1B3A6B', borderColor: '#1B3A6B' }}
+                        style={{ color: '#6b7280', borderColor: '#d1d5db' }}
                       >
                         Editar
                       </Link>
@@ -130,6 +136,7 @@ export function AtasClient({ atas, podeAprovar }: { atas: AtaRow[]; podeAprovar:
     if (!window.confirm('Publicar esta ata? Esta ação não pode ser desfeita.')) return
     setAprovando(ata.id)
     await supabase.from('atas').update({ status: 'publicada' }).eq('id', ata.id)
+    await supabase.from('reunioes').update({ status: 'realizada' }).eq('id', ata.reuniao_id)
     setAprovando(null)
     router.refresh()
   }

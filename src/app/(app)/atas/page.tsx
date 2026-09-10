@@ -1,16 +1,24 @@
 import { createClient } from '@/lib/supabase/server'
 import { AtasClient } from './atas-client'
 
-export default async function AtasPage() {
+export default async function AtasPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const supabase = await createClient()
+  const params = await searchParams
+  const reuniaoId = params.reuniao ?? null
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  let atasQuery = supabase
+    .from('atas')
+    .select('*, reuniao:reunioes(numero, tipo, data_inicio)')
+    .order('created_at', { ascending: false })
+
+  if (reuniaoId) {
+    atasQuery = atasQuery.eq('reuniao_id', reuniaoId)
+  }
+
   const [{ data }, perfilResult] = await Promise.all([
-    supabase
-      .from('atas')
-      .select('*, reuniao:reunioes(numero, tipo, data_inicio)')
-      .order('created_at', { ascending: false }),
+    atasQuery,
     user
       ? supabase.from('perfis').select('papel').eq('id', user.id).single()
       : Promise.resolve({ data: null }),

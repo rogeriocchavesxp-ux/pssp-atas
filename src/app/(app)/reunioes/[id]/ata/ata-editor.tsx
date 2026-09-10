@@ -1,5 +1,5 @@
 'use client'
-import { useState, forwardRef, useImperativeHandle } from 'react'
+import { useState, useRef, forwardRef, useImperativeHandle, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Ata, Reuniao, AtaConteudo } from '@/types/database'
@@ -7,6 +7,39 @@ import type { DocAta } from './page'
 
 export type AtaEditorHandle = {
   inserirNaAta: (doc: DocAta) => void
+  getConteudo: () => AtaConteudo
+}
+
+function markdownToHtml(md: string): string {
+  if (!md) return '<div><br></div>'
+  return md.split('\n').map(line => {
+    const escaped = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const formatted = escaped
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/__([^_]+)__/g, '<u>$1</u>')
+      .replace(/_([^_]+)_/g, '<em>$1</em>')
+    return `<div>${formatted || '<br>'}</div>`
+  }).join('')
+}
+
+function htmlToMarkdown(html: string): string {
+  if (typeof document === 'undefined') return html
+  const tmp = document.createElement('div')
+  tmp.innerHTML = html
+  function walk(node: Node): string {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? ''
+    if (node.nodeType !== Node.ELEMENT_NODE) return ''
+    const el = node as Element
+    const tag = el.tagName.toLowerCase()
+    const children = Array.from(el.childNodes).map(walk).join('')
+    if (tag === 'strong' || tag === 'b') return `**${children}**`
+    if (tag === 'u') return `__${children}__`
+    if (tag === 'em' || tag === 'i') return `_${children}_`
+    if (tag === 'br') return '\n'
+    if (tag === 'div') return children + '\n'
+    return children
+  }
+  return Array.from(tmp.childNodes).map(walk).join('').replace(/\n$/, '')
 }
 
 function toRoman(n: number): string {
@@ -27,16 +60,15 @@ function codigoTipoReuniao(tipo: string): string {
 }
 
 function gerarTextoResolucao(doc: DocAta, reuniao: Reuniao): string {
-  const res = doc.resolucao
   const com = doc.comissao
-  if (!res || !com) return ''
+  if (!com || !doc.proposta?.trim()) return ''
 
   const ano = new Date(reuniao.data_inicio).getFullYear()
   const tipo = codigoTipoReuniao(reuniao.tipo)
   const codigoReuniao = `PSSP-${tipo} ${ano}`
   const nomeComissao = com.nome ?? 'Plenário'
 
-  const cabecalho = `COMISSÃO ${toRoman(com.numero)} - ${nomeComissao} - ${codigoReuniao} - DOC.${toRoman(res.numero)}`
+  const cabecalho = `COMISSÃO ${toRoman(com.numero)} - ${nomeComissao} - ${codigoReuniao} - DOC.${toRoman(doc.numero)}`
 
   const partes: string[] = [
     `Quanto ao documento ${String(doc.numero).padStart(3, '0')}`,
@@ -48,10 +80,20 @@ function gerarTextoResolucao(doc: DocAta, reuniao: Reuniao): string {
     partes.push(`\nConsiderando: ${doc.conteudo.trim()}`)
   }
 
-  // Remove prefixos legados ("O PSSP RESOLVE:", "O PSSP-O - 2026 Resolve:" etc.) que
-  // o usuário possa ter digitado na proposta antes de existir geração automática
-  const proposta = (doc.proposta?.trim() ?? '').replace(/^O PSSP[^:]*:\s*/i, '')
-  partes.push(`\nO PSSP-${tipo} - ${ano} Resolve:\n${proposta}`)
+  const rawProposta = doc.proposta?.trim() ?? ''
+  const sepIdx = rawProposta.indexOf('===RESOLVE===')
+  let considerandoComissao = ''
+  let resolveText = ''
+  if (sepIdx !== -1) {
+    considerandoComissao = rawProposta.slice(0, sepIdx).replace(/^\n+|\n+$/g, '')
+    resolveText = rawProposta.slice(sepIdx + '===RESOLVE==='.length).replace(/^\n+|\n+$/g, '')
+  } else {
+    resolveText = rawProposta.replace(/^O PSSP[^:]*:\s*/i, '').trim()
+  }
+  if (considerandoComissao) {
+    partes.push(`\nConsiderando (Comissão): ${considerandoComissao}`)
+  }
+  partes.push(`\nO PSSP-${tipo} - ${ano} Resolve:\n${resolveText}`)
 
   return `${cabecalho}\n${partes.join(' ')}`
 }
@@ -157,16 +199,37 @@ type Tab =
   | { kind: 'regular'; idx: number }
   | { kind: 'obs' }
 
-export const AtaEditor = forwardRef<AtaEditorHandle, { reuniaoId: string; ata: Ata | null; reuniao: Reuniao }>(
-function AtaEditorInner({ reuniaoId, ata, reuniao }, ref) {
+export const AtaEditor = forwardRef<AtaEditorHandle, { reuniaoId: string; ata: Ata | null; reuniao: Reuniao; onVisualizar?: () => void }>(
+function AtaEditorInner({ reuniaoId, ata, reuniao, onVisualizar }, ref) {
   const router = useRouter()
   const supabase = createClient()
+  const editorRef = useRef<HTMLDivElement>(null)
   const [conteudo, setConteudo] = useState<AtaConteudo>(
     ata ? migrar(ata.conteudo as unknown as Record<string, unknown>) : CONTEUDO_VAZIO
   )
   const [tab, setTab] = useState<Tab>({ kind: 'verificacao' })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [carregandoOficiais, setCarregandoOficiais] = useState(false)
+
+  useEffect(() => {
+    const el = editorRef.current
+    if (!el) return
+    let v = ''
+    if (tab.kind === 'verificacao') v = conteudo.verificacao_poderes
+    else if (tab.kind === 'preparatoria') v = conteudo.sessao_preparatoria
+    else if (tab.kind === 'regular') v = conteudo.sessoes_regulares[tab.idx] ?? ''
+    else v = conteudo.observacoes ?? ''
+    if (htmlToMarkdown(el.innerHTML) !== v) {
+      el.innerHTML = markdownToHtml(v)
+    }
+  }, [tab, conteudo])
+
+  function handleInput() {
+    const el = editorRef.current
+    if (!el) return
+    onChange(htmlToMarkdown(el.innerHTML))
+  }
 
   function markDirty() { setSaved(false) }
 
@@ -214,6 +277,57 @@ function AtaEditorInner({ reuniaoId, ata, reuniao }, ref) {
     router.refresh()
   }
 
+  async function inserirOficiais() {
+    setCarregandoOficiais(true)
+    const { data } = await supabase
+      .from('reuniao_presencas')
+      .select('presente, oficial:oficiais(nome, tipo)')
+      .eq('reuniao_id', reuniaoId)
+
+    setCarregandoOficiais(false)
+    if (!data || data.length === 0) {
+      alert('Nenhum oficial registrado na lista de presença desta reunião.')
+      return
+    }
+
+    type OfRec = { nome: string; tipo: string }
+    function getOf(r: typeof data[0]): OfRec {
+      return (Array.isArray(r.oficial) ? r.oficial[0] : r.oficial) as OfRec
+    }
+    function titulo(tipo: string) { return tipo === 'pastor' ? 'Rev.' : 'Presb.' }
+    function lista(arr: typeof data): string {
+      if (arr.length === 0) return ''
+      return arr.map((r, i) => {
+        const of = getOf(r)
+        const sep = i < arr.length - 2 ? '; ' : i === arr.length - 2 ? '; e ' : '.'
+        return `${titulo(of.tipo)} ${of.nome}${sep}`
+      }).join('')
+    }
+
+    const presentes = data.filter(r => r.presente)
+    const ausentes  = data.filter(r => !r.presente)
+
+    const partes: string[] = []
+    if (presentes.length > 0) {
+      partes.push(
+        `Feita a chamada pelo Secretário Executivo, registram-se a presença dos seguintes ministros:\n${lista(presentes)}\n\nTodos os presentes assinaram o Livro de Presença do Concílio.`
+      )
+    }
+    if (ausentes.length > 0) {
+      partes.push(`Ausentaram-se os seguintes ministros:\n${lista(ausentes)}`)
+    }
+
+    const bloco = partes.join('\n\n')
+    const atual = conteudo.verificacao_poderes.trimEnd()
+    setFixo('verificacao_poderes', atual ? atual + '\n\n' + bloco : bloco)
+  }
+
+  function aplicarFormato(cmd: string) {
+    editorRef.current?.focus()
+    document.execCommand(cmd, false, undefined)
+    handleInput()
+  }
+
   function inserirNaAta(doc: DocAta) {
     const texto = gerarTextoResolucao(doc, reuniao)
     if (!texto) return
@@ -222,7 +336,7 @@ function AtaEditorInner({ reuniaoId, ata, reuniao }, ref) {
     if (tab.kind !== 'regular') setTab({ kind: 'regular', idx: 0 })
   }
 
-  useImperativeHandle(ref, () => ({ inserirNaAta }), [tab, conteudo, reuniao])
+  useImperativeHandle(ref, () => ({ inserirNaAta, getConteudo: () => conteudo }), [tab, conteudo, reuniao])
 
   const total = conteudo.sessoes_regulares.length
 
@@ -359,30 +473,96 @@ function AtaEditorInner({ reuniaoId, ata, reuniao }, ref) {
 
       {/* Editor */}
       <div className="p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="font-semibold text-gray-900 text-sm">{titulo}</h3>
-            {descricao && <p className="text-xs text-gray-400 mt-0.5">{descricao}</p>}
-          </div>
-          <div className="flex items-center gap-2">
-            {saved && <span className="text-xs text-green-500">Salvo</span>}
-            <button
-              onClick={salvar}
-              disabled={saving}
-              className="px-3 py-1.5 rounded-md text-xs font-semibold text-white disabled:opacity-60"
-              style={{ background: '#1B3A6B' }}
-            >
-              {saving ? 'Salvando...' : 'Salvar'}
-            </button>
-          </div>
+        <div className="mb-3">
+          <h3 className="font-semibold text-gray-900 text-sm">{titulo}</h3>
+          {descricao && <p className="text-xs text-gray-400 mt-0.5">{descricao}</p>}
         </div>
-        <textarea
-          value={valor}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          rows={20}
-          className="w-full text-sm text-gray-800 leading-relaxed resize-none focus:outline-none font-mono"
-          style={{ fontFamily: 'ui-monospace, "Courier New", monospace', fontSize: 13 }}
+
+        {/* Barra de formatação */}
+        <div className="flex items-center gap-1 mb-2 pb-2 border-b border-gray-100">
+          {[
+            { label: 'N', title: 'Negrito', cmd: 'bold', style: { fontWeight: 800 } as React.CSSProperties },
+            { label: 'I', title: 'Itálico', cmd: 'italic', style: { fontStyle: 'italic' } as React.CSSProperties },
+            { label: 'S', title: 'Sublinhado', cmd: 'underline', style: { textDecoration: 'underline' } as React.CSSProperties },
+          ].map(({ label, title, cmd, style }) => (
+            <button
+              key={cmd}
+              title={title}
+              onMouseDown={e => { e.preventDefault(); aplicarFormato(cmd) }}
+              className="w-7 h-7 rounded text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-colors flex items-center justify-center"
+            >
+              <span style={style}>{label}</span>
+            </button>
+          ))}
+          <div className="w-px h-4 bg-gray-200 mx-1" />
+          <button
+            title="Maiúsculas"
+            onMouseDown={e => {
+              e.preventDefault()
+              const sel = window.getSelection()
+              if (!sel || sel.isCollapsed) return
+              const text = sel.toString().toUpperCase()
+              document.execCommand('insertText', false, text)
+              handleInput()
+            }}
+            className="px-2 h-7 rounded text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
+          >
+            AA
+          </button>
+          <button
+            title="Minúsculas"
+            onMouseDown={e => {
+              e.preventDefault()
+              const sel = window.getSelection()
+              if (!sel || sel.isCollapsed) return
+              const text = sel.toString().toLowerCase()
+              document.execCommand('insertText', false, text)
+              handleInput()
+            }}
+            className="px-2 h-7 rounded text-xs font-semibold text-gray-600 hover:bg-gray-100 transition-colors"
+          >
+            aa
+          </button>
+          <div className="w-px h-4 bg-gray-200 mx-1" />
+          {tab.kind === 'verificacao' && (
+            <button
+              onMouseDown={e => { e.preventDefault(); inserirOficiais() }}
+              disabled={carregandoOficiais}
+              className="px-3 h-7 rounded text-xs font-semibold disabled:opacity-60"
+              style={{ background: '#f0f4ff', color: '#1B3A6B', border: '1px solid #c7d4f0' }}
+            >
+              {carregandoOficiais ? 'Carregando...' : 'Inserir Oficiais Presentes'}
+            </button>
+          )}
+          <div className="flex-1" />
+          {saved && <span className="text-xs text-green-500 mr-1">Salvo</span>}
+          <button
+            onMouseDown={e => { e.preventDefault(); salvar() }}
+            disabled={saving}
+            className="px-3 h-7 rounded text-xs font-semibold text-white disabled:opacity-60"
+            style={{ background: '#1B3A6B' }}
+          >
+            {saving ? 'Salvando...' : 'Salvar'}
+          </button>
+          {onVisualizar && (
+            <button
+              onMouseDown={e => { e.preventDefault(); onVisualizar() }}
+              className="ml-1 px-3 h-7 rounded text-xs font-semibold border"
+              style={{ color: '#1B3A6B', borderColor: '#1B3A6B' }}
+            >
+              Visualizar Ata
+            </button>
+          )}
+        </div>
+
+        <div
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={handleInput}
+          data-placeholder={placeholder}
+          className="w-full text-sm text-gray-800 leading-relaxed focus:outline-none min-h-[20rem] outline-none"
+          style={{ fontFamily: 'ui-monospace, "Courier New", monospace', fontSize: 13, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
         />
       </div>
 
