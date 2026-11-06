@@ -48,6 +48,7 @@ export function UsuariosClient({ usuarios: inicial, igrejas }: { usuarios: Perfi
   const [modalCriar, setModalCriar] = useState(false)
   const [editando, setEditando] = useState<EditState | null>(null)
   const [confirmandoExcluir, setConfirmandoExcluir] = useState<Perfil | null>(null)
+  const [menuAberto, setMenuAberto] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -186,25 +187,34 @@ export function UsuariosClient({ usuarios: inicial, igrejas }: { usuarios: Perfi
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <div className="relative group">
-                    <button className="text-gray-400 hover:text-gray-600 px-1 rounded">⋯</button>
-                    <div className="absolute right-0 top-7 z-20 w-44 bg-white border border-gray-100 rounded-lg shadow-lg py-1 hidden group-hover:block">
-                      <button
-                        onClick={() => setEditando({ userId: u.id, papel: u.papel, igreja_id: u.igreja_id, novaSenha: '', mostrarSenha: false })}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                        Editar acesso
-                      </button>
-                      <button
-                        onClick={() => handleToggleAtivo(u)}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                        {u.ativo ? 'Desativar' : 'Ativar'}
-                      </button>
-                      <button
-                        onClick={() => { setConfirmandoExcluir(u); setErro('') }}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
-                        Excluir
-                      </button>
-                    </div>
+                  <div className="relative">
+                    <button
+                      onClick={() => setMenuAberto(menuAberto === u.id ? null : u.id)}
+                      className="text-gray-400 hover:text-gray-600 px-1 rounded">
+                      ⋯
+                    </button>
+                    {menuAberto === u.id && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setMenuAberto(null)} />
+                        <div className="absolute right-0 top-7 z-20 w-44 bg-white border border-gray-100 rounded-lg shadow-lg py-1">
+                          <button
+                            onClick={() => { setEditando({ userId: u.id, papel: u.papel, igreja_id: u.igreja_id, novaSenha: '', mostrarSenha: false }); setMenuAberto(null) }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                            Editar acesso
+                          </button>
+                          <button
+                            onClick={() => { handleToggleAtivo(u); setMenuAberto(null) }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                            {u.ativo ? 'Desativar' : 'Ativar'}
+                          </button>
+                          <button
+                            onClick={() => { setConfirmandoExcluir(u); setErro(''); setMenuAberto(null) }}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                            Excluir
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>
