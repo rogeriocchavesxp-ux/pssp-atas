@@ -74,20 +74,21 @@ export function UsuariosClient({ usuarios: inicial, igrejas }: { usuarios: Perfi
     setSaving(true)
     setErro('')
 
-    const ops: Promise<{ error?: string; ok?: boolean }>[] = [
+    if (editando.novaSenha.trim().length > 0 && editando.novaSenha.trim().length < 6) {
+      setSaving(false)
+      setErro('A senha deve ter pelo menos 6 caracteres.')
+      return
+    }
+
+    const promessas: Promise<{ error?: string }>[] = [
       atualizarPapel(editando.userId, editando.papel),
       atualizarIgreja(editando.userId, editando.igreja_id),
     ]
-    if (editando.novaSenha.trim().length > 0) {
-      if (editando.novaSenha.trim().length < 6) {
-        setSaving(false)
-        setErro('A senha deve ter pelo menos 6 caracteres.')
-        return
-      }
-      ops.push(redefinirSenha(editando.userId, editando.novaSenha.trim()))
+    if (editando.novaSenha.trim().length >= 6) {
+      promessas.push(redefinirSenha(editando.userId, editando.novaSenha.trim()))
     }
 
-    const results = await Promise.all(ops)
+    const results = await Promise.all(promessas)
     setSaving(false)
     const err = results.find(r => r.error)?.error
     if (err) { setErro(err); return }
