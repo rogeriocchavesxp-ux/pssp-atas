@@ -54,3 +54,18 @@ export async function toggleAtivo(userId: string, ativo: boolean) {
   revalidatePath('/usuarios')
   return { ok: true }
 }
+
+export async function redefinirSenha(userId: string, novaSenha: string) {
+  const admin = createAdminClient()
+  const { error } = await admin.auth.admin.updateUserById(userId, { password: novaSenha })
+  if (error) return { error: error.message }
+  return { ok: true }
+}
+
+export async function excluirUsuario(userId: string) {
+  const admin = createAdminClient()
+  const { error } = await admin.auth.admin.deleteUser(userId)
+  if (error) return { error: error.message }
+  revalidatePath('/usuarios')
+  return { ok: true }
+}

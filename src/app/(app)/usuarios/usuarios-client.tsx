@@ -1,7 +1,7 @@
 'use client'
 import { useState, useTransition } from 'react'
 import type { Perfil, Igreja, Papel } from '@/types/database'
-import { criarUsuario, atualizarPapel, atualizarIgreja, toggleAtivo } from './actions'
+import { criarUsuario, atualizarPapel, atualizarIgreja, toggleAtivo, redefinirSenha, excluirUsuario } from './actions'
 
 type IgrejaLite = Pick<Igreja, 'id' | 'nome' | 'sigla'>
 
@@ -39,12 +39,15 @@ interface EditState {
   userId: string
   papel: Papel
   igreja_id: string | null
+  novaSenha: string
+  mostrarSenha: boolean
 }
 
 export function UsuariosClient({ usuarios: inicial, igrejas }: { usuarios: Perfil[]; igrejas: IgrejaLite[] }) {
   const [usuarios, setUsuarios] = useState(inicial)
   const [modalCriar, setModalCriar] = useState(false)
   const [editando, setEditando] = useState<EditState | null>(null)
+  const [confirmandoExcluir, setConfirmandoExcluir] = useState<Perfil | null>(null)
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -69,16 +72,40 @@ export function UsuariosClient({ usuarios: inicial, igrejas }: { usuarios: Perfi
     if (!editando) return
     setSaving(true)
     setErro('')
-    const [r1, r2] = await Promise.all([
+
+    const ops: Promise<{ error?: string; ok?: boolean }>[] = [
       atualizarPapel(editando.userId, editando.papel),
       atualizarIgreja(editando.userId, editando.igreja_id),
-    ])
+    ]
+    if (editando.novaSenha.trim().length > 0) {
+      if (editando.novaSenha.trim().length < 6) {
+        setSaving(false)
+        setErro('A senha deve ter pelo menos 6 caracteres.')
+        return
+      }
+      ops.push(redefinirSenha(editando.userId, editando.novaSenha.trim()))
+    }
+
+    const results = await Promise.all(ops)
     setSaving(false)
-    if (r1.error || r2.error) { setErro(r1.error ?? r2.error ?? ''); return }
+    const err = results.find(r => r.error)?.error
+    if (err) { setErro(err); return }
+
     setUsuarios(prev => prev.map(u =>
       u.id === editando.userId ? { ...u, papel: editando.papel, igreja_id: editando.igreja_id } : u
     ))
     setEditando(null)
+  }
+
+  // ── Excluir usuário ──────────────────────────────────────────────
+  async function handleExcluir(u: Perfil) {
+    setSaving(true)
+    setErro('')
+    const res = await excluirUsuario(u.id)
+    setSaving(false)
+    if (res.error) { setErro(res.error); return }
+    setUsuarios(prev => prev.filter(x => x.id !== u.id))
+    setConfirmandoExcluir(null)
   }
 
   // ── Toggle ativo ─────────────────────────────────────────────────
@@ -163,7 +190,7 @@ export function UsuariosClient({ usuarios: inicial, igrejas }: { usuarios: Perfi
                     <button className="text-gray-400 hover:text-gray-600 px-1 rounded">⋯</button>
                     <div className="absolute right-0 top-7 z-20 w-44 bg-white border border-gray-100 rounded-lg shadow-lg py-1 hidden group-hover:block">
                       <button
-                        onClick={() => setEditando({ userId: u.id, papel: u.papel, igreja_id: u.igreja_id })}
+                        onClick={() => setEditando({ userId: u.id, papel: u.papel, igreja_id: u.igreja_id, novaSenha: '', mostrarSenha: false })}
                         className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                         Editar acesso
                       </button>
@@ -171,6 +198,11 @@ export function UsuariosClient({ usuarios: inicial, igrejas }: { usuarios: Perfi
                         onClick={() => handleToggleAtivo(u)}
                         className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                         {u.ativo ? 'Desativar' : 'Ativar'}
+                      </button>
+                      <button
+                        onClick={() => { setConfirmandoExcluir(u); setErro('') }}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                        Excluir
                       </button>
                     </div>
                   </div>
@@ -237,6 +269,34 @@ export function UsuariosClient({ usuarios: inicial, igrejas }: { usuarios: Perfi
         </div>
       )}
 
+      {/* Modal: Confirmar exclusão */}
+      {confirmandoExcluir && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h2 className="font-semibold text-gray-900">Excluir usuário</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              {erro && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-md px-3 py-2">{erro}</p>}
+              <p className="text-sm text-gray-600">
+                Tem certeza que deseja excluir <strong>{confirmandoExcluir.nome || confirmandoExcluir.email}</strong>?
+                Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setConfirmandoExcluir(null)}
+                  className="flex-1 py-2.5 rounded-md text-sm font-medium border border-gray-200 text-gray-600">
+                  Cancelar
+                </button>
+                <button onClick={() => handleExcluir(confirmandoExcluir)} disabled={saving}
+                  className="flex-1 py-2.5 rounded-md text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60">
+                  {saving ? 'Excluindo...' : 'Excluir'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal: Editar acesso */}
       {editando && usuarioEditando && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -280,6 +340,30 @@ export function UsuariosClient({ usuarios: inicial, igrejas }: { usuarios: Perfi
                   ))}
                 </select>
               </div>
+
+              {/* Redefinir senha */}
+              <div className="border-t border-gray-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEditando(prev => prev ? { ...prev, mostrarSenha: !prev.mostrarSenha, novaSenha: '' } : null)}
+                  className="text-xs font-medium text-blue-600 hover:underline">
+                  {editando.mostrarSenha ? '− Cancelar redefinição de senha' : '+ Redefinir senha'}
+                </button>
+                {editando.mostrarSenha && (
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Nova senha (mínimo 6 caracteres)</label>
+                    <input
+                      type="text"
+                      className={cls}
+                      placeholder="Nova senha provisória"
+                      value={editando.novaSenha}
+                      onChange={e => setEditando(prev => prev ? { ...prev, novaSenha: e.target.value } : null)}
+                      minLength={6}
+                    />
+                  </div>
+                )}
+              </div>
+
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setEditando(null)}
                   className="flex-1 py-2.5 rounded-md text-sm font-medium border border-gray-200 text-gray-600">
